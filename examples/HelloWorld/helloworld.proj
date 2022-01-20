@@ -1,0 +1,101 @@
+{
+    "source_files": [
+        "HelloWorld.cpp",
+        "../../source/Element.cpp",
+        "../../source/Graphics.cpp",
+        "../../source/FreeTypeFont.cpp",
+        "../../source/GL/Graphics_GL.cpp",
+        "../../source/GL/PlatformInterface_X11.cpp",
+        "../../source/GL/GLShader.cpp",
+        "../../source/GL/GLDiagnostics.cpp"
+    ],
+   "configurations":
+    {
+        "debug":
+        {
+            "default": true,
+            "include":
+            [
+                "../../source",
+                "/usr/include/freetype2",
+                "/usr/include/libdrm"
+            ],
+            "libs":
+            [
+                "stdc++",
+                "pthread",
+                "m",
+                "freetype",
+                "GLESv2",
+                "EGL",
+                "gbm",
+                "drm",
+                "z"
+            ],
+            "define":
+            [
+                "DEBUG_BUILD",
+                "PLATFORM_DRM_EGL",
+                "VERBOSE_BUILD",
+                "VERBOSE_SHADER_BUILD"
+            ]
+        },
+        "release":
+        {
+            "default": false,
+            "include":
+            [
+                "../../source",
+                "/usr/include/freetype2",
+                "/usr/include/libdrm"
+            ],
+            "libs":
+            [
+                "stdc++",
+                "pthread",
+                "m",
+                "freetype",
+                "GLESv2",
+                "EGL",
+                "gbm",
+                "drm",
+                "z"
+            ],
+            "define":
+            [
+                "RELEASE_BUILD",
+                "PLATFORM_DRM_EGL"
+            ]
+        },
+        "x11":
+        {
+            "default": false,
+            "enable_all_warnings": true,
+            "warnings_as_errors": false,
+            "optimisation": "0",
+            "debug_level": "2",
+            "include":
+            [
+                "../../source",
+                "/usr/include/freetype2"
+            ],
+            "libs":
+            [
+                "stdc++",
+                "pthread",
+                "m",
+                "freetype",
+                "GL",
+                "X11",
+                "z"
+            ],
+            "define":
+            [
+                "DEBUG_BUILD",
+                "PLATFORM_X11_GL",
+                "VERBOSE_BUILD",
+                "VERBOSE_SHADER_BUILD"
+            ]
+        }
+    }
+}
