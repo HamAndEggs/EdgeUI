@@ -43,9 +43,9 @@ int main(int argc, char *argv[])
         mainScreen.Draw();
 
         eui::Rectangle r(120,120,400,200);
-        eui::Style s(eui::COLOUR_LIGHT_GREY,25);
+        eui::Style s(eui::COLOUR_GREEN,25);
         s.mBorder = eui::SetAlpha(eui::COLOUR_BLACK,100);
-        s.mBorderSize = 5;
+        s.mBorderSize = 15;
         graphics->DrawRectangle(r,s);
 
         // Fat line

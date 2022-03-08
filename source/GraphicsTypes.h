@@ -47,6 +47,9 @@ static const Colour COLOUR_NONE = 0;
 static const Colour COLOUR_BLACK = MakeColour(0,0,0);
 static const Colour COLOUR_WHITE = MakeColour(255,255,255);
 static const Colour COLOUR_GREY = MakeColour(150,150,150);
+static const Colour COLOUR_RED = MakeColour(255,0,0);
+static const Colour COLOUR_GREEN = MakeColour(0,255,0);
+static const Colour COLOUR_BLUE = MakeColour(0,0,255);
 static const Colour COLOUR_LIGHT_GREY = MakeColour(200,200,200);
 static const Colour COLOUR_DARK_GREY = MakeColour(100,100,100);
 
@@ -113,7 +116,6 @@ struct Quad2Df
 
 	const float* data()const{return &v[0].x;}
 };
-
 
 /**
  * @brief Simple utility for building quads on the fly.

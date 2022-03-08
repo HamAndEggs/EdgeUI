@@ -185,20 +185,40 @@ void Graphics_GL::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
         // Now see if we need to draw a boarder.
         if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
         {
+            mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
             if( pStyle.mBorderSize == 1 )
             {
-                mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
                 glDrawArrays(GL_LINE_LOOP,0,numPoints);
                 CHECK_OGL_ERRORS();
             }
             else
             {
-				const VertFloatXY* last = points + numPoints - 1;
+				const float shrink = pStyle.mBorderSize*2;
+				// Need to double up the points and scale the duplicates so to build a triangle strip.
+				const float SX = (float)(pRect.width - shrink) / ((float)pRect.width);
+				const float SY = (float)(pRect.height - shrink) / ((float)pRect.height);
+				const float DX = pStyle.mBorderSize;
+				const float DY = pStyle.mBorderSize;
+
+				VertFloatXY* border = (VertFloatXY*)mWorkBuffers.scratchRam.Restart(sizeof(VertFloatXY) * (numPoints+1) * 2);
 				for(int n = 0 ; n < numPoints ; n++ )
 				{
-					DrawLine(last->x,last->y,points[n].x,points[n].y,pStyle.mBorder,pStyle.mBorderSize);
-					last = points + n;
+					border[1].x = points[n].x;
+					border[1].y = points[n].y;
+					border[0].x = points[n].x * SX + DX;
+					border[0].y = points[n].y * SY + DY;
+					border += 2;
 				}
+				border[1].x = points[0].x;
+				border[1].y = points[0].y;
+				border[0].x = (points[0].x * SX) * DX;
+				border[0].y = (points[0].y * SY) * DY;
+
+				VertexPtr(2,GL_FLOAT,mWorkBuffers.scratchRam.Data());
+				glDrawArrays(GL_TRIANGLE_STRIP,0,(numPoints+1)*2);
+
+				CHECK_OGL_ERRORS();
+
             }
         }
     }
