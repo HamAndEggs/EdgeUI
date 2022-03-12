@@ -193,26 +193,24 @@ void Graphics_GL::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
             }
             else
             {
-				const float shrink = pStyle.mBorderSize*2;
-				// Need to double up the points and scale the duplicates so to build a triangle strip.
-				const float SX = (float)(pRect.width - shrink) / ((float)pRect.width);
-				const float SY = (float)(pRect.height - shrink) / ((float)pRect.height);
-				const float DX = pStyle.mBorderSize;
-				const float DY = pStyle.mBorderSize;
+				const float shrinkX = ((float)pRect.width - pStyle.mBorderSize) / pRect.width;
+				const float shrinkY = ((float)pRect.height - pStyle.mBorderSize) / pRect.height;
+
+				auto MakeBorder = [shrinkX,shrinkY,pRect](VertFloatXY* rDest,const VertFloatXY& pSource)
+				{
+					rDest[1].x = pSource.x;
+					rDest[1].y = pSource.y;
+					rDest[0].x = ((pSource.x - pRect.GetCenterX()) * shrinkX) + pRect.GetCenterX();
+					rDest[0].y = ((pSource.y - pRect.GetCenterY()) * shrinkY) + pRect.GetCenterY();
+				};
 
 				VertFloatXY* border = (VertFloatXY*)mWorkBuffers.scratchRam.Restart(sizeof(VertFloatXY) * (numPoints+1) * 2);
 				for(int n = 0 ; n < numPoints ; n++ )
 				{
-					border[1].x = points[n].x;
-					border[1].y = points[n].y;
-					border[0].x = points[n].x * SX + DX;
-					border[0].y = points[n].y * SY + DY;
+					MakeBorder(border,points[n]);
 					border += 2;
 				}
-				border[1].x = points[0].x;
-				border[1].y = points[0].y;
-				border[0].x = (points[0].x * SX) * DX;
-				border[0].y = (points[0].y * SY) * DY;
+				MakeBorder(border,points[0]);
 
 				VertexPtr(2,GL_FLOAT,mWorkBuffers.scratchRam.Data());
 				glDrawArrays(GL_TRIANGLE_STRIP,0,(numPoints+1)*2);

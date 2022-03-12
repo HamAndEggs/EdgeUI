@@ -16,6 +16,8 @@ class Element;
 typedef std::shared_ptr<Element> ElementPtr;
 typedef std::function<bool(Element& pElement)> ElementEvent;
 
+static const int32_t ELEMENT_SIZE_USE_PARENT = -1;
+
 /**
  * @brief The base element that all renderable parts of the UI are constructed from.
  * The rendering of the UI is done anew everyframe. This saves on work having to compute posible changes. Shifts the work onto the GPU.
@@ -25,6 +27,7 @@ class Element
 {
 public:
     Element(GraphicsPtr pGraphics);
+    virtual ~Element(){}
 
     GraphicsPtr GetGraphics(){return mGraphics;}
     /**
@@ -41,9 +44,12 @@ public:
      */
     Rectangle GetRectangle()const{return mComputed.totalRect;}
 
+    Rectangle GetContentRectangle()const{return mComputed.contentRect;}
+
     void SetArea(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight);
     void SetArea(const Rectangle& pArea);
     void SetPos(int32_t pX,int32_t pY);
+    void SetSize(int32_t pWidth,int32_t pHeight);
 
     void SetPadding(int32_t pLeft,int32_t pTop,int32_t pRight,int32_t pBottom);
     void SetPadding(int32_t pSpace){SetPadding(pSpace,pSpace,pSpace,pSpace);}
@@ -100,9 +106,14 @@ public:
     ElementPtr AddElement(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight);
     ElementPtr AddButton(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight,const std::string& pText,ElementEvent pOnPressed);
     ElementPtr AddLabel(int32_t pX,int32_t pY,const std::string& pText);
+    ElementPtr AddGridlayout(uint32_t pColumns, uint32_t pRows);
+
+protected:
+    virtual void RecomputeRectangles();
 
 private:
     GraphicsPtr mGraphics;
+    ElementPtr mParent;
     std::list<ElementPtr> mChildren;
     Rectangle mArea;                        //!< This is the area of the element, it's boarder, excluding any margin.
     std::string mID;                        //!< If set can be used to search from an element.
@@ -144,7 +155,6 @@ private:
         ElementEvent OnKey = nullptr;
     }mEvents;
 
-    void RecomputeRectangles();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,6 @@
 
 #include "Element.h"
+#include "LayoutGrid.h"
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -50,6 +51,7 @@ void Element::SetLabel(const std::string& pLabel)
 void Element::Attach(ElementPtr& pElement)
 {
     mChildren.push_back(pElement);
+    pElement->mParent = ElementPtr(this);
 }
 
 void Element::Update()
@@ -164,17 +166,31 @@ ElementPtr Element::AddLabel(int32_t pX,int32_t pY,const std::string& pText)
     return label;
 }
 
+ElementPtr Element::AddGridlayout(uint32_t pColumns, uint32_t pRows)
+{
+    eui::ElementPtr layout = std::make_shared<eui::LayoutGrid>(mGraphics,pColumns,pRows);
+    layout->SetPos(0,0);
+    layout->SetAreaFromContent();
+    layout->SetForground(COLOUR_WHITE);
+    layout->SetBackground(COLOUR_BLACK);
+    Attach(layout);
+    return layout;
+}
+
 void Element::RecomputeRectangles()
 {
+    const int32_t width = mArea.width == ELEMENT_SIZE_USE_PARENT ? mParent->GetContentRectangle().width : mArea.width;
+    const int32_t height = mArea.height == ELEMENT_SIZE_USE_PARENT ? mParent->GetContentRectangle().height : mArea.height;
+
     mComputed.totalRect.x = mArea.x - mMargin.left;
     mComputed.totalRect.y = mArea.y - mMargin.top;
-    mComputed.totalRect.width = mArea.width + mMargin.left + mMargin.right;
-    mComputed.totalRect.height = mArea.height + mMargin.top + mMargin.bottom;
+    mComputed.totalRect.width = width + mMargin.left + mMargin.right;
+    mComputed.totalRect.height = height + mMargin.top + mMargin.bottom;
 
     mComputed.contentRect.x = mArea.x + mPadding.left;
     mComputed.contentRect.y = mArea.y + mPadding.top;
-    mComputed.contentRect.width = mArea.width - mPadding.left - mPadding.right;
-    mComputed.contentRect.height = mArea.height - mPadding.top - mPadding.bottom;
+    mComputed.contentRect.width = width - mPadding.left - mPadding.right;
+    mComputed.contentRect.height = height - mPadding.top - mPadding.bottom;
     
 }
 

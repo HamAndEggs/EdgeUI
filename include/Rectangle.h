@@ -48,6 +48,11 @@ struct Rectangle
         pQuad[6] = (int16_t)x;              pQuad[7] = (int16_t)y + height;
     };
 
+    Rectangle GetShrunk(int32_t pX,int32_t pY)const
+    {
+        return Rectangle(x + pX,y + pY,width - pX - pX,height - pY - pY);
+    }
+
     void Shrink(int32_t pX,int32_t pY)
     {
         x += pX;
