@@ -24,7 +24,7 @@ public:
     }
 
 protected:
-    virtual void RecomputeRectangles();
+    virtual void RecomputeRectangles(const Rectangle& pParentContectRect);
 
 private:
     const uint32_t mColumns;

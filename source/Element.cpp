@@ -6,7 +6,8 @@ namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
 Element::Element(GraphicsPtr pGraphics) :
-    mGraphics(pGraphics)
+    mGraphics(pGraphics),
+    mArea(0,0,ELEMENT_SIZE_USE_PARENT,ELEMENT_SIZE_USE_PARENT)
 {
 
 }
@@ -51,42 +52,33 @@ void Element::SetLabel(const std::string& pLabel)
 void Element::Attach(ElementPtr& pElement)
 {
     mChildren.push_back(pElement);
-    pElement->mParent = ElementPtr(this);
 }
 
-void Element::Update()
+void Element::Update(const Rectangle& pParentContectRect)
 {
     if( mVisible == false )
         return;
 
     if( mContentDirty )
     {
-        if( mAreaFromContent )
-        {
-
-        }
-
-        RecomputeRectangles();
+        RecomputeRectangles(pParentContectRect);
         mContentDirty = false;
     }
 
     for( auto& e : mChildren )
     {
-        e->Update();
+        e->Update(GetContentRectangle());
     }
 }
 
-void Element::Draw(int32_t pX,int32_t pY)
+void Element::Draw()
 {
     if( mVisible == false )
         return;
 
     if( mStyle.mBackground != COLOUR_NONE )
     {
-        Rectangle r = mArea;
-        r.x += pX;
-        r.y += pY;
-        mGraphics->DrawRectangle(r,mStyle);
+        mGraphics->DrawRectangle(mComputed.contentRect,mStyle);
     }
 
     if( mLabel.size() > 0 )
@@ -96,7 +88,7 @@ void Element::Draw(int32_t pX,int32_t pY)
 
     for( auto& e : mChildren )
     {
-        e->Draw(mComputed.contentRect.x,mComputed.contentRect.y);
+        e->Draw();
     }
 }
 
@@ -159,7 +151,6 @@ ElementPtr Element::AddLabel(int32_t pX,int32_t pY,const std::string& pText)
     eui::ElementPtr label = std::make_shared<eui::Element>(mGraphics);
     label->SetPos(pX,pY);
     label->SetLabel(pText);
-    label->SetAreaFromContent();
     label->SetForground(COLOUR_WHITE);
     label->SetBackground(COLOUR_BLACK);
     Attach(label);
@@ -170,25 +161,18 @@ ElementPtr Element::AddGridlayout(uint32_t pColumns, uint32_t pRows)
 {
     eui::ElementPtr layout = std::make_shared<eui::LayoutGrid>(mGraphics,pColumns,pRows);
     layout->SetPos(0,0);
-    layout->SetAreaFromContent();
     layout->SetForground(COLOUR_WHITE);
-    layout->SetBackground(COLOUR_BLACK);
     Attach(layout);
     return layout;
 }
 
-void Element::RecomputeRectangles()
+void Element::RecomputeRectangles(const Rectangle& pParentContectRect)
 {
-    const int32_t width = mArea.width == ELEMENT_SIZE_USE_PARENT ? mParent->GetContentRectangle().width : mArea.width;
-    const int32_t height = mArea.height == ELEMENT_SIZE_USE_PARENT ? mParent->GetContentRectangle().height : mArea.height;
+    const int32_t width = mArea.width == ELEMENT_SIZE_USE_PARENT ? pParentContectRect.width : mArea.width;
+    const int32_t height = mArea.height == ELEMENT_SIZE_USE_PARENT ? pParentContectRect.height : mArea.height;
 
-    mComputed.totalRect.x = mArea.x - mMargin.left;
-    mComputed.totalRect.y = mArea.y - mMargin.top;
-    mComputed.totalRect.width = width + mMargin.left + mMargin.right;
-    mComputed.totalRect.height = height + mMargin.top + mMargin.bottom;
-
-    mComputed.contentRect.x = mArea.x + mPadding.left;
-    mComputed.contentRect.y = mArea.y + mPadding.top;
+    mComputed.contentRect.x = pParentContectRect.x + mArea.x + mPadding.left;
+    mComputed.contentRect.y = pParentContectRect.y + mArea.y + mPadding.top;
     mComputed.contentRect.width = width - mPadding.left - mPadding.right;
     mComputed.contentRect.height = height - mPadding.top - mPadding.bottom;
     

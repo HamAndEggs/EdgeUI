@@ -31,19 +31,16 @@ public:
 
     GraphicsPtr GetGraphics(){return mGraphics;}
     /**
-     * @brief Get the Area object, this is it's boarder, the area it takes up excluding the margin.
-     * I return a copy to prevent bugs or bad code corrupting a control.
+     * @brief Get the rectangle of the entire element.
      * @return Rectangle 
      */
     Rectangle GetArea()const{return mArea;}
 
     /**
-     * @brief Get the Rectangle that the control takes up, it's area INCLUDING the margin.
+     * @brief The inner Rectangle that the control uses for it's children and content.
      * This is computed and so a copy is returned. Also makes code safer.
      * @return Rectangle 
      */
-    Rectangle GetRectangle()const{return mComputed.totalRect;}
-
     Rectangle GetContentRectangle()const{return mComputed.contentRect;}
 
     void SetArea(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight);
@@ -64,7 +61,6 @@ public:
 
     void SetVisible(bool pVisible = true){mVisible = pVisible;}
     void SetEnabled(bool pEnabled = true){mEnabled = pEnabled;}
-    void SetAreaFromContent(bool pAreaFromContent = true){mAreaFromContent = pAreaFromContent;}
     
     void SetFont(uint32_t pFont){mStyle.mFont = pFont;}
 
@@ -85,14 +81,13 @@ public:
      * @brief Updates all elements in the tree, if they are visible.
      * Doing full update before the draw allows all dependacies to have the correct data for rendering.
      */
-    void Update();
+    void Update(const Rectangle& pParentContectRect = Rectangle());
 
     /**
      * @brief Renders the element and then it's children, if they are visible.
-     * pX and pY is added to the elements position.
-     * This means that children are rendered relitive to their parent.
+     * Children position is rendered relitive to their parent.
      */
-    void Draw(int32_t pX = 0,int32_t pY = 0);
+    void Draw();
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -109,11 +104,10 @@ public:
     ElementPtr AddGridlayout(uint32_t pColumns, uint32_t pRows);
 
 protected:
-    virtual void RecomputeRectangles();
+    virtual void RecomputeRectangles(const Rectangle& pParentContectRect);
 
 private:
     GraphicsPtr mGraphics;
-    ElementPtr mParent;
     std::list<ElementPtr> mChildren;
     Rectangle mArea;                        //!< This is the area of the element, it's boarder, excluding any margin.
     std::string mID;                        //!< If set can be used to search from an element.
@@ -121,7 +115,6 @@ private:
     bool mVisible = true;                   //!< If true, the element and it's children will receive messages and be drawn. If not it would be as if they did not exists.
     bool mEnabled = true;                   //!< If true, will be drawn in an active state. If false will be drawn in an inactive state. Unlike visible, will receive all messages.
     bool mContentDirty = true;              //!< If some part of the content has changed this will be true. Update uses this.
-    bool mAreaFromContent = false;          //!< If true, then the area's size will be set from the size of the content.
 
     Style mStyle;
 
@@ -135,15 +128,14 @@ private:
         int32_t right = 0;
         int32_t top = 0;
         int32_t bottom = 0;
-    }mPadding,mMargin;
+    }mPadding;
 
     /**
      * @brief This is a copy of computed values. They are updated when one of their dependacies are altered.
      */
     struct
     {
-        Rectangle totalRect;    //!< The total area the control takes up, it's area plus the margin.
-        Rectangle contentRect;  //!< The rectangle around the content of the control.
+        Rectangle contentRect;  //!< The rectangle around the content of the control and it's children.
     }mComputed;
 
     struct
