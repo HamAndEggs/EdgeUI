@@ -3,6 +3,7 @@
 
 #include "GraphicsTypes.h"
 #include "Rectangle.h"
+#include "Point.h"
 
 #include <memory>
 #include <functional>
@@ -13,7 +14,6 @@ namespace eui{
 
 struct Style;
 class Graphics;
-typedef std::shared_ptr<Graphics> GraphicsPtr;
 typedef std::function<bool(int32_t pX,int32_t pY,bool pTouched)> EventTouchScreen;
 
 /**
@@ -40,12 +40,15 @@ public:
     Graphics();
     virtual ~Graphics();
 
-    static GraphicsPtr Open(DisplayRotation pDisplayRotation = ROTATE_FRAME_PORTRATE);
+    static Graphics* Open(DisplayRotation pDisplayRotation = ROTATE_FRAME_PORTRATE);
+    static void      Close();
+    static Graphics* Get(); // Will throw an exception if open has not been called.
 
     /**
      * @brief Get the display rectangle
      */
     virtual Rectangle GetDisplayRect()const = 0;
+    virtual RectangleF GetDisplayRectF()const = 0;
 
     virtual int32_t GetDisplayWidth()const = 0;
 
@@ -54,7 +57,7 @@ public:
     /**
      * @brief Builds a set of points that can be used for drawing a rounded rectangle with lines or polygons.
      */
-    void GetRoundedRectanglePoints(const Rectangle& pRect,VertFloatXY::Buffer& rBuffer,uint32_t pRadius);
+    void GetRoundedRectanglePoints(const RectangleF& pRect,VertFloatXY::Buffer& rBuffer,float pRadius);
 
 	/**
 	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
@@ -80,10 +83,10 @@ public:
      */
     virtual bool ProcessSystemEvents(EventTouchScreen mTouchEvent) = 0;
 
-    virtual void GetFontRect(uint32_t pFont,Rectangle& rRect) = 0;
+    virtual void GetFontRect(uint32_t pFont,RectangleF& rRect) = 0;
     virtual void DrawFont(const Style& pStyle,int32_t pX,int32_t pY,const std::string& pText) = 0;
 
-    virtual void DrawRectangle(const Rectangle& pRect,const Style& pStyle) = 0;
+    virtual void DrawRectangle(const RectangleF& pRect,const Style& pStyle) = 0;
 
     virtual void DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth = 1) = 0;
 

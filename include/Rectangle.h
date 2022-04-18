@@ -5,11 +5,10 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-
-struct Rectangle
+template <typename RECT_TYPE>struct RectangleTemplate
 {
-    Rectangle(){};
-    Rectangle(const Rectangle& pRect)
+    RectangleTemplate(){};
+    RectangleTemplate(const RectangleTemplate<RECT_TYPE>& pRect)
     {
         x = pRect.x;
         y = pRect.y;
@@ -17,7 +16,7 @@ struct Rectangle
         height = pRect.height;
     }
 
-    Rectangle(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight)
+    RectangleTemplate(RECT_TYPE pX,RECT_TYPE pY,RECT_TYPE pWidth,RECT_TYPE pHeight)
     {
         x = pX;
         y = pY;
@@ -25,16 +24,16 @@ struct Rectangle
         height = pHeight;
     }
 
-    const Rectangle& operator = (const Rectangle& pRect)
+    const RectangleTemplate<RECT_TYPE>& operator = (const RectangleTemplate<RECT_TYPE>& pRect)
     {
         x = pRect.x;
         y = pRect.y;
         width = pRect.width;
         height = pRect.height;
-        return *this;
+        return pRect;
     }
 
-    bool ContainsPoint(int32_t pX,int32_t pY)
+    bool ContainsPoint(RECT_TYPE pX,RECT_TYPE pY)const
     {
         return pX >= x && pX <= x + width &&
                pY >= y && pY <= y + height;
@@ -48,12 +47,12 @@ struct Rectangle
         pQuad[6] = (int16_t)x;              pQuad[7] = (int16_t)y + height;
     };
 
-    Rectangle GetShrunk(int32_t pX,int32_t pY)const
+    RectangleTemplate<RECT_TYPE> GetShrunk(RECT_TYPE pX,RECT_TYPE pY)const
     {
-        return Rectangle(x + pX,y + pY,width - pX - pX,height - pY - pY);
+        return RectangleTemplate<RECT_TYPE>(x + pX,y + pY,width - pX - pX,height - pY - pY);
     }
 
-    void Shrink(int32_t pX,int32_t pY)
+    void Shrink(RECT_TYPE pX,RECT_TYPE pY)
     {
         x += pX;
         y += pY;
@@ -61,21 +60,24 @@ struct Rectangle
         height-= pY + pY;
     }
 
-    int32_t GetCenterX()const
+    RECT_TYPE GetCenterX()const
     {
         return x + (width / 2);
     }
 
-    int32_t GetCenterY()const
+    RECT_TYPE GetCenterY()const
     {
         return y + (height / 2);
     }
 
-    int32_t x = 0;
-    int32_t y = 0;
-    int32_t width = 0;
-    int32_t height = 0;
+    RECT_TYPE x = 0;
+    RECT_TYPE y = 0;
+    RECT_TYPE width = 0;
+    RECT_TYPE height = 0;
 };
+
+typedef RectangleTemplate<int32_t> Rectangle;
+typedef RectangleTemplate<float> RectangleF;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 };//namespace eui{

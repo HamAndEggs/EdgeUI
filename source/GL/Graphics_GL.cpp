@@ -5,9 +5,31 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-GraphicsPtr Graphics::Open(DisplayRotation pDisplayRotation)
+static Graphics* theGraphics = nullptr;
+
+Graphics* Graphics::Open(DisplayRotation pDisplayRotation)
 {
-    return std::make_shared<Graphics_GL>(pDisplayRotation);
+	if( theGraphics != nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Graphics engine all ready allocated. Please only call Graphics::Open once");
+	}
+    theGraphics = new Graphics_GL(pDisplayRotation);
+	return theGraphics;
+}
+
+void Graphics::Close()
+{
+	delete theGraphics;
+	theGraphics = nullptr;
+}
+
+Graphics* Graphics::Get()
+{
+	if( theGraphics == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
+	}
+	return theGraphics;
 }
 
 Graphics_GL::Graphics_GL(DisplayRotation pDisplayRotation)
@@ -118,6 +140,11 @@ Rectangle Graphics_GL::GetDisplayRect()const
     return Rectangle(0,0,GetDisplayWidth(),GetDisplayHeight());
 }
 
+RectangleF Graphics_GL::GetDisplayRectF()const
+{
+    return RectangleF(0.0f,0.0f,(float)GetDisplayWidth(),(float)GetDisplayHeight());
+}
+
 int32_t Graphics_GL::GetDisplayWidth()const
 {
     return mPlatform->GetWidth();
@@ -156,7 +183,7 @@ bool Graphics_GL::ProcessSystemEvents(EventTouchScreen mTouchEvent)
     return mExitRequest == false;
 }
 
-void Graphics_GL::GetFontRect(uint32_t pFont,Rectangle& rRect)
+void Graphics_GL::GetFontRect(uint32_t pFont,RectangleF& rRect)
 {
 
 }
@@ -166,7 +193,7 @@ void Graphics_GL::DrawFont(const Style& pStyle,int32_t pX,int32_t pY,const std::
 
 }
 
-void Graphics_GL::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
+void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
 {
     if( pStyle.mRadius )
     {

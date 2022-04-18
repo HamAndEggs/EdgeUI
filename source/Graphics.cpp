@@ -20,16 +20,16 @@ void Graphics::SetExitRequest()
     mExitRequest = true;
 }
 
-void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertFloatXY::Buffer& rBuffer,uint32_t pRadius)
+void Graphics::GetRoundedRectanglePoints(const RectangleF& pRect,VertFloatXY::Buffer& rBuffer,float pRadius)
 {
-	const int radius = std::min(std::min(pRect.height/2,pRect.width/2),(int32_t)pRadius);
+	const int radius = (int)(std::min(std::min(pRect.height/2,pRect.width/2),pRadius));
     // This uses the Midpoint circle algorithm.
     // Did try with basic float trig and sin / cos but it caused issues with the curces at each corner not being the same.
     int x = radius;
     int y = 0;
     int dx = 1;
     int dy = 1;
-    int err = dx - (radius << 1);
+    int err = dx - (radius / 2.0f );
 
     // Little buffer for the segment that we calculate, it's 1/8th of the circle.
     int vx[radius];

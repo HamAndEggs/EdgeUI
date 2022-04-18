@@ -8,86 +8,77 @@
 
 #include "Graphics.h"
 #include "Style.h"
+#include "Diagnostics.h"
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
 class Element;
-typedef std::shared_ptr<Element> ElementPtr;
 typedef std::function<bool(Element& pElement)> ElementEvent;
 
-static const int32_t ELEMENT_SIZE_USE_PARENT = -1;
-
 /**
- * @brief The base element that all renderable parts of the UI are constructed from.
- * The rendering of the UI is done anew everyframe. This saves on work having to compute posible changes. Shifts the work onto the GPU.
+ * @brief The base element that all renderable parts of the UI are constructed from. It is a container, does not render anything but does pass on rendering to children.
+ * The rendering of the UI is done everyframe. This saves on work having to compute posible changes. Shifts the work onto the GPU.
  * Some members of this type are calculated when their dependencies change. This will save some cpu when rendering.
  */
 class Element
 {
 public:
-    Element(GraphicsPtr pGraphics);
-    virtual ~Element(){}
 
-    GraphicsPtr GetGraphics(){return mGraphics;}
     /**
-     * @brief Get the rectangle of the entire element.
-     * @return Rectangle 
+     * @brief Width and Height are fraction of parent.
      */
-    Rectangle GetArea()const{return mArea;}
+    static Element* Create(float pWidth = 1.0f,float pHeight = 1.0f);
+
+    virtual ~Element();
 
     /**
      * @brief The inner Rectangle that the control uses for it's children and content.
-     * This is computed and so a copy is returned. Also makes code safer.
-     * @return Rectangle 
+     * @return RectangleF 
      */
-    Rectangle GetContentRectangle()const{return mComputed.contentRect;}
+    virtual RectangleF GetContentRectangle();
 
-    void SetArea(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight);
-    void SetArea(const Rectangle& pArea);
-    void SetPos(int32_t pX,int32_t pY);
-    void SetSize(int32_t pWidth,int32_t pHeight);
+    virtual RectangleF GetParentRectangle();
 
-    void SetPadding(int32_t pLeft,int32_t pTop,int32_t pRight,int32_t pBottom);
-    void SetPadding(int32_t pSpace){SetPadding(pSpace,pSpace,pSpace,pSpace);}
+    const std::string& GetID(){return mID;}
+    Element* GetParent(){return mParent;}
 
-    void SetID(const std::string& pID){mID = pID;}
+    virtual bool GetIsVisible()const{return mVisible;}
+    virtual bool GetIsEnabled()const{return mEnabled;}
+
+    virtual const PointF& GetSize()const{return mSize;}
 
     /**
-     * @brief Set the content to be text
-     * Pass empty string to remove content.
+     * @brief Set the position based on fraction of the width of the parent and relitive to it's x.
      */
-    void SetLabel(const std::string& pLabel);
+    virtual void SetPos(const PointF& pPos);
+    virtual void SetPos(float pX,float pY){SetPos(PointF(pX,pY));}
+    virtual void SetSize(const PointF& pSize);
+    virtual void SetSize(float pWidth,float pHeight){SetSize(PointF(pWidth,pHeight));}
 
-    void SetVisible(bool pVisible = true){mVisible = pVisible;}
-    void SetEnabled(bool pEnabled = true){mEnabled = pEnabled;}
+    virtual void SetID(const std::string& pID){mID = pID;}
+
+    virtual void SetOnPressed(ElementEvent pHandler){mEvents.OnPressed = pHandler;}
+    virtual void SetOnDrag(ElementEvent pHandler){mEvents.OnDrag = pHandler;}
+    virtual void SetOnKey(ElementEvent pHandler){mEvents.OnKey = pHandler;}
+
+    virtual void SetForground(Colour pColour){mStyle.mForground = pColour;}
+    virtual void SetBackground(Colour pColour){mStyle.mBackground = pColour;}
+    virtual void SetBackground(Colour pFromGradient,Colour pToGradient,float pGradientDirection = 0){mStyle.mBackground = pFromGradient;mStyle.mBackgroundGradient = pToGradient; mStyle.mGradientDirection = pGradientDirection;}
+    virtual void SetBorder(float pSize,Colour pColour = COLOUR_BLACK){mStyle.mBorderSize = pSize; mStyle.mBorder = pColour;}
     
-    void SetFont(uint32_t pFont){mStyle.mFont = pFont;}
+    virtual void SetRadius(float pRadius){mStyle.mRadius = pRadius;}
+    virtual void SetBorderSize(float pBorderSize){mStyle.mBorderSize = pBorderSize;}
 
-    void SetForground(Colour pColour){mStyle.mForground = pColour;}
-    void SetBackground(Colour pColour){mStyle.mBackground = pColour;}
-    void SetBorder(uint32_t pSize,Colour pColour = COLOUR_BLACK){mStyle.mBorderSize = pSize; mStyle.mBorder = pColour;}
-    
-    void SetRadius(uint32_t pRadius){mStyle.mRadius = pRadius;}
-    void SetBorderSize(uint32_t pBorderSize){mStyle.mBorderSize = pBorderSize;}
-
-    void SetOnPressed(ElementEvent pHandler){mEvents.OnPressed = pHandler;}
-    void SetOnDrag(ElementEvent pHandler){mEvents.OnDrag = pHandler;}
-    void SetOnKey(ElementEvent pHandler){mEvents.OnKey = pHandler;}
-
-    void Attach(ElementPtr& pElement);
+    virtual void Attach(Element* pElement);
 
     /**
      * @brief Updates all elements in the tree, if they are visible.
      * Doing full update before the draw allows all dependacies to have the correct data for rendering.
      */
-    void Update(const Rectangle& pParentContectRect = Rectangle());
+    virtual void Update();
 
-    /**
-     * @brief Renders the element and then it's children, if they are visible.
-     * Children position is rendered relitive to their parent.
-     */
-    void Draw();
+    virtual void Draw();
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -95,48 +86,26 @@ public:
      * Could also be used for automated testing with playback of events.
      * Will return true if handled, will call all children until one handles it if it did not handle it.
      */
-    bool TouchEvent(int32_t pX,int32_t pY,bool pTouched);
-
-    // Factory functions, items made here will be attached to this.
-    ElementPtr AddElement(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight);
-    ElementPtr AddButton(int32_t pX,int32_t pY,int32_t pWidth,int32_t pHeight,const std::string& pText,ElementEvent pOnPressed);
-    ElementPtr AddLabel(int32_t pX,int32_t pY,const std::string& pText);
-    ElementPtr AddGridlayout(uint32_t pColumns, uint32_t pRows);
+    virtual bool TouchEvent(float pX,float pY,bool pTouched);
 
 protected:
-    virtual void RecomputeRectangles(const Rectangle& pParentContectRect);
+    /**
+     * @brief Force the creation from the factory functions.
+     * This is because elements have shadered pointers or can have shadered pointers to each other.
+     * If an element is created on the stack this can cause an object to be deleted twice.
+     */
+    Element();
 
 private:
-    GraphicsPtr mGraphics;
-    std::list<ElementPtr> mChildren;
-    Rectangle mArea;                        //!< This is the area of the element, it's boarder, excluding any margin.
+    Element* mParent = nullptr;
+    std::list<Element*> mChildren;
     std::string mID;                        //!< If set can be used to search from an element.
-    std::string mLabel;                     //!< If set, is rendered with the elements font.
     bool mVisible = true;                   //!< If true, the element and it's children will receive messages and be drawn. If not it would be as if they did not exists.
     bool mEnabled = true;                   //!< If true, will be drawn in an active state. If false will be drawn in an inactive state. Unlike visible, will receive all messages.
-    bool mContentDirty = true;              //!< If some part of the content has changed this will be true. Update uses this.
 
     Style mStyle;
-
-    /**
-     * @brief The margin is the space around an element’s border. The padding is the space between an element’s border and the element’s content
-     * https://blog.hubspot.com/website/css-margin-vs-padding
-     */
-    struct
-    {
-        int32_t left = 0;
-        int32_t right = 0;
-        int32_t top = 0;
-        int32_t bottom = 0;
-    }mPadding;
-
-    /**
-     * @brief This is a copy of computed values. They are updated when one of their dependacies are altered.
-     */
-    struct
-    {
-        Rectangle contentRect;  //!< The rectangle around the content of the control and it's children.
-    }mComputed;
+    PointF mPos = {0.0f,0.0f};    //!< For now this is pixel corrdinates, later I may change to a ratio of the size of parent.
+    PointF mSize = {1.0f,1.0f};   //!< Size is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
 
     struct
     {
@@ -146,7 +115,6 @@ private:
         ElementEvent OnDrag = nullptr;
         ElementEvent OnKey = nullptr;
     }mEvents;
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

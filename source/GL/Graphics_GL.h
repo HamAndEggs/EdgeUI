@@ -32,7 +32,9 @@ public:
     Graphics_GL(DisplayRotation pDisplayRotation);
     virtual ~Graphics_GL();
 
-    virtual Rectangle GetDisplayRect()const;
+    virtual Rectangle  GetDisplayRect()const;
+	virtual RectangleF GetDisplayRectF()const;
+
     virtual int32_t GetDisplayWidth()const;
     virtual int32_t GetDisplayHeight()const;
 
@@ -40,11 +42,11 @@ public:
 	virtual void EndFrame();
     virtual bool ProcessSystemEvents(EventTouchScreen mTouchEvent);
 
-    virtual void GetFontRect(uint32_t pFont,Rectangle& rRect);
+    virtual void GetFontRect(uint32_t pFont,RectangleF& rRect);
     virtual void DrawFont(const Style& pStyle,int32_t pX,int32_t pY,const std::string& pText);
 
 
-    virtual void DrawRectangle(const Rectangle& pRect,const Style& pStyle);
+    virtual void DrawRectangle(const RectangleF& pRect,const Style& pStyle);
     virtual void DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth);
 
 private:

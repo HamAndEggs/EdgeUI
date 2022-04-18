@@ -3,28 +3,51 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-LayoutGrid::LayoutGrid(GraphicsPtr pGraphics,uint32_t pColumns, uint32_t pRows):
-    Element(pGraphics),
+LayoutGrid* LayoutGrid::Create(uint32_t pColumns, uint32_t pRows)
+{
+    LayoutGrid* layout = new LayoutGrid(pColumns,pRows);
+    layout->SetPos(0,0);
+    layout->SetForground(COLOUR_WHITE);
+    return layout;
+}
+
+LayoutGrid* LayoutGrid::Create(eui::Element* pParent,uint32_t pColumns, uint32_t pRows)
+{
+    LayoutGrid* layout = Create(pColumns,pRows);
+    pParent->Attach(layout);
+
+    return layout;
+}
+
+LayoutGrid::LayoutGrid(uint32_t pColumns, uint32_t pRows):
+    Element(),
     mColumns(pColumns),
     mRows(pRows)
 {
-    SetArea(0,0,ELEMENT_SIZE_USE_PARENT,ELEMENT_SIZE_USE_PARENT);
     assert( pColumns > 0 );
     assert( pRows > 0 );
+
+    SET_DEFAULT_ID();
+    const PointF& size = GetSize();
+    const float cellWidth = 1.0f / mColumns;
+    const float cellHeight = 1.0f / mRows;
 
     int n = 0;
     for(int r = 0 ; r < mRows ; r++ )
     {
-        std::vector<ElementPtr> row;
+        std::vector<Element*> row;
         for(int c = 0 ; c < mColumns ; c++ )
         {
-            ElementPtr e = AddElement(0,0,0,0);
+            Element* e = Element::Create();
+            e->SetPos(cellWidth * r,cellHeight * c);
+            e->SetSize(cellWidth,cellHeight);
+            Attach(e);
             if( (r+c)&1 == 1 )
                 e->SetBackground(COLOUR_GREEN);
             else
                 e->SetBackground(COLOUR_BLUE);
 
-            e->SetLabel(std::to_string(n));n++;
+            e->SetID(std::to_string(n) );n++;
             row.emplace_back(e);
         }
         mCells.emplace_back(row);
@@ -34,29 +57,6 @@ LayoutGrid::LayoutGrid(GraphicsPtr pGraphics,uint32_t pColumns, uint32_t pRows):
 LayoutGrid::~LayoutGrid()
 {
 
-}
-
-void LayoutGrid::RecomputeRectangles(const Rectangle& pParentContectRect)
-{
-    Element::RecomputeRectangles(pParentContectRect);
-
-    assert( mColumns > 0 );
-    assert( mRows > 0 );
-
-    const Rectangle total = GetContentRectangle();
-    const float cellWidth = (float)total.width / mColumns;
-    const float cellHeight = (float)total.height / mRows;
-
-    float y = 0;
-
-    for(int r = 0 ; r < mRows ; r++, y += cellHeight )
-    {
-        float x = 0;
-        for(int c = 0 ; c < mColumns ; c++, x += cellWidth )
-        {
-            mCells[r][c]->SetArea(x,y,cellWidth,cellHeight);
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
