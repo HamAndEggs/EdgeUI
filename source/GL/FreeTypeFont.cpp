@@ -329,5 +329,32 @@ void FreeTypeFont::BuildTexture(
 		}
 	}	
 }
+
+void FreeTypeFont::BuildQuads(const char* pText,int pX,int pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const
+{
+	FT_UInt glyph = 0;
+	while( (glyph = GetNextGlyph(pText)) != 0 )
+	{
+		const int index = GetGlyphIndex(glyph);
+		if( index < 0 )
+		{
+			pX += mSpaceAdvance;
+		}
+		else
+		{
+			auto&g = mGlyphs.at(index);
+
+			pVertices.BuildQuad(pX + g.x_off,pY + g.y_off,g.width,g.height);
+
+			pUVs.AddUVRect(
+					g.uv[0].x,
+					g.uv[0].y,
+					g.uv[1].x,
+					g.uv[1].y);
+
+			pX += g.advance;
+		}
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{

@@ -9,16 +9,6 @@ namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief The texture formats that I expose and support. Don't want to get too silly here, these are more than enough.
- */
-enum struct TextureFormat
-{
-	FORMAT_RGBA,
-	FORMAT_RGB,
-	FORMAT_ALPHA    //<! Alpha only, mainly used for font rendering.
-};
-
-/**
  * @brief Mainly for debugging, returns a string representation of the enum.
  */
 constexpr std::string_view TextureFormatToString(TextureFormat pFormat)

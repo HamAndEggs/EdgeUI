@@ -49,21 +49,14 @@ struct FreeTypeFont
 			std::function<uint32_t(int pWidth,int pHeight)> pCreateTexture,
 			std::function<void(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels)> pFillTexture);
 
+	void BuildQuads(const char* pText,int pX,int pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const;
+
 	const std::string mFontName; //<! Helps with debugging.
 	FT_Face mFace;								//<! The font we are rending from.
 	uint32_t mTexture;							//<! This is the texture that the glyphs are in so we can render using GL and quads.
 	std::array<FreeTypeFont::Glyph,96>mGlyphs;	//<! Meta data needed to render the characters.
 	int mBaselineHeight;						//<! This is the number of pixels above baseline the higest character is. Used for centering a font in the y.
 	int mSpaceAdvance;							//<! How much to advance by for a non rerendered character.
-
-	struct
-	{
-		uint8_t R = 255;
-		uint8_t G = 255;
-		uint8_t B = 255;
-		uint8_t A = 255;
-	}mColour;	
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

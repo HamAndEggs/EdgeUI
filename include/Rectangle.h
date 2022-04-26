@@ -5,79 +5,96 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-template <typename RECT_TYPE>struct RectangleTemplate
+struct Rectangle
 {
-    RectangleTemplate(){};
-    RectangleTemplate(const RectangleTemplate<RECT_TYPE>& pRect)
+    Rectangle(){};
+    Rectangle(const Rectangle& pRect)
     {
-        x = pRect.x;
-        y = pRect.y;
-        width = pRect.width;
-        height = pRect.height;
+        *this = pRect;
     }
 
-    RectangleTemplate(RECT_TYPE pX,RECT_TYPE pY,RECT_TYPE pWidth,RECT_TYPE pHeight)
+    Rectangle(float pLeft,float pTop,float pRight,float pBottom)
     {
-        x = pX;
-        y = pY;
-        width = pWidth;
-        height = pHeight;
+        left = pLeft;
+        top = pTop;
+        right = pRight;
+        bottom = pBottom;
     }
 
-    const RectangleTemplate<RECT_TYPE>& operator = (const RectangleTemplate<RECT_TYPE>& pRect)
+    const Rectangle& operator = (const Rectangle& pRect)
     {
-        x = pRect.x;
-        y = pRect.y;
-        width = pRect.width;
-        height = pRect.height;
+        left = pRect.left;
+        top = pRect.top;
+        right = pRect.right;
+        bottom = pRect.bottom;
+
         return pRect;
     }
 
-    bool ContainsPoint(RECT_TYPE pX,RECT_TYPE pY)const
+    bool ContainsPoint(float pX,float pY)const
     {
-        return pX >= x && pX <= x + width &&
-               pY >= y && pY <= y + height;
+        return pX >= left && pX <= right &&
+               pY >= top && pY <= bottom;
     }
 
-    void GetQuad(int16_t pQuad[8])const
+    void GetQuad(float *pQuad)const
     {
-        pQuad[0] = (int16_t)x;              pQuad[1] = (int16_t)y;
-        pQuad[2] = (int16_t)x + width;      pQuad[3] = (int16_t)y;
-        pQuad[4] = (int16_t)x + width;      pQuad[5] = (int16_t)y + height;
-        pQuad[6] = (int16_t)x;              pQuad[7] = (int16_t)y + height;
+        pQuad[0] = left;       pQuad[1] = top;
+        pQuad[2] = right;      pQuad[3] = top;
+        pQuad[4] = right;      pQuad[5] = bottom;
+        pQuad[6] = left;       pQuad[7] = bottom;
     };
 
-    RectangleTemplate<RECT_TYPE> GetShrunk(RECT_TYPE pX,RECT_TYPE pY)const
+    Rectangle GetShrunk(float pX,float pY)const
     {
-        return RectangleTemplate<RECT_TYPE>(x + pX,y + pY,width - pX - pX,height - pY - pY);
+        return Rectangle(left + pX,top + pY,right - pX,bottom - pY);
     }
 
-    void Shrink(RECT_TYPE pX,RECT_TYPE pY)
+    void Shrink(float pX,float pY)
     {
-        x += pX;
-        y += pY;
-        width -= pX + pX;
-        height-= pY + pY;
+        left += pX;
+        right -= pX;
+        top += pY;
+        bottom-= pY;
     }
 
-    RECT_TYPE GetCenterX()const
+    float GetCenterX()const
     {
-        return x + (width / 2);
+        return (left + right) / 2.0f;
     }
 
-    RECT_TYPE GetCenterY()const
+    float GetCenterY()const
     {
-        return y + (height / 2);
+        return (top + bottom) / 2.0f;
     }
 
-    RECT_TYPE x = 0;
-    RECT_TYPE y = 0;
-    RECT_TYPE width = 0;
-    RECT_TYPE height = 0;
+    float GetWidth()const
+    {
+        return right - left;
+    }
+
+    float GetHeight()const
+    {
+        return bottom - top;
+    }
+
+    float GetX(float pTween)const
+    {
+        return (left * (1.0f - pTween)) + (right * pTween);
+    }
+
+    float GetY(float pTween)const
+    {
+        return (top * (1.0f - pTween)) + (bottom * pTween);
+    }
+
+
+    float left = 0;
+    float top = 0;
+    float right = 0;
+    float bottom = 0;
 };
 
-typedef RectangleTemplate<int32_t> Rectangle;
-typedef RectangleTemplate<float> RectangleF;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 };//namespace eui{

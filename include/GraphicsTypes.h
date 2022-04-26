@@ -70,100 +70,67 @@ typedef std::vector<VertXYZC> VerticesXYZC;
 struct VertXYZUV
 {
 	float x,y,z;
-    int16_t u,v;
-
-	void SetUV(float pU,float pV)
-	{
-		const float SCALE = (float)0x7fff;
-
-		assert( pU >= -1.0f && pU <= 1.0f );
-		assert( pV >= -1.0f && pV <= 1.0f );
-
-		u = (int16_t)(pU * SCALE);
-		v = (int16_t)(pV * SCALE);
-	}
-
+    float u,v;
 };
 typedef std::vector<VertXYZUV> VerticesXYZUV;
 
 // List of points, expected to be in screen space, mainly used for drawing line lists. Compressed into 16 bits per element.
-template <typename ELEMENT_TYPE> struct VertexXY
+struct VertXY
 {
-	VertexXY() = default;
-	VertexXY(ELEMENT_TYPE pX,ELEMENT_TYPE pY):x(pX),y(pY){};
+	VertXY() = default;
+	VertXY(float pX,float pY):x(pX),y(pY){};
 
-	ELEMENT_TYPE x,y;
+	float x,y;
 
-	typedef std::vector<VertexXY<ELEMENT_TYPE>> Vector;
-	typedef ScratchBuffer<VertexXY<ELEMENT_TYPE>,128,64,1024> Buffer;	
-};
-
-typedef VertexXY<int8_t> VertInt8XY;
-typedef VertexXY<int16_t> VertInt16XY;
-typedef VertexXY<int32_t> VertInt32XY;
-typedef VertexXY<float> VertFloatXY;
-
-struct Quad2D
-{
-	VertInt16XY v[4];
-
-	const int16_t* data()const{return &v[0].x;}
-};
-
-struct Quad2Df
-{
-	VertFloatXY v[4];
-
-	const float* data()const{return &v[0].x;}
-};
-
-/**
- * @brief Simple utility for building quads on the fly.
- */
-struct Vert2DShortScratchBuffer : public ScratchBuffer<VertInt16XY,256,64,1024>
-{
+	typedef std::vector<VertXY> Vector;
+//	typedef ScratchBuffer<VertXY,128,64,1024> Buffer;
 	/**
-	 * @brief Writes six vertices to the buffer.
+	 * @brief Simple utility for building quads on the fly.
 	 */
-	inline void BuildQuad(int pX,int pY,int pWidth,int pHeight)
+	struct Buffer : public ScratchBuffer<VertXY,256,64,1024>
 	{
-		VertInt16XY* verts = Next(6);
-		verts[0].x = pX;			verts[0].y = pY;
-		verts[1].x = pX + pWidth;	verts[1].y = pY;
-		verts[2].x = pX + pWidth;	verts[2].y = pY + pHeight;
-
-		verts[3].x = pX;			verts[3].y = pY;
-		verts[4].x = pX + pWidth;	verts[4].y = pY + pHeight;
-		verts[5].x = pX;			verts[5].y = pY + pHeight;
-	}
-
-	/**
-	 * @brief Writes the UV's to six vertices in the correct order to match the quad built above.
-	 */
-	inline void AddUVRect(int U0,int V0,int U1,int V1)
-	{
-		VertInt16XY* verts = Next(6);
-		verts[0].x = U0;	verts[0].y = V0;
-		verts[1].x = U1;	verts[1].y = V0;
-		verts[2].x = U1;	verts[2].y = V1;
-
-		verts[3].x = U0;	verts[3].y = V0;
-		verts[4].x = U1;	verts[4].y = V1;
-		verts[5].x = U0;	verts[5].y = V1;
-	}
-
-	/**
-	 * @brief Adds a number of quads to the buffer, moving STEP for each one.
-	 */
-	inline void BuildQuads(int pX,int pY,int pWidth,int pHeight,int pCount,int pXStep,int pYStep)
-	{
-		for(int n = 0 ; n < pCount ; n++, pX += pXStep, pY += pYStep )
+		/**
+		 * @brief Writes six vertices to the buffer.
+		 */
+		inline void BuildQuad(int pX,int pY,int pWidth,int pHeight)
 		{
-			BuildQuad(pX,pY,pWidth,pHeight);
-		}
-	}
-};
+			VertXY* verts = Next(6);
+			verts[0].x = pX;			verts[0].y = pY;
+			verts[1].x = pX + pWidth;	verts[1].y = pY;
+			verts[2].x = pX + pWidth;	verts[2].y = pY + pHeight;
 
+			verts[3].x = pX;			verts[3].y = pY;
+			verts[4].x = pX + pWidth;	verts[4].y = pY + pHeight;
+			verts[5].x = pX;			verts[5].y = pY + pHeight;
+		}
+
+		/**
+		 * @brief Writes the UV's to six vertices in the correct order to match the quad built above.
+		 */
+		inline void AddUVRect(int U0,int V0,int U1,int V1)
+		{
+			VertXY* verts = Next(6);
+			verts[0].x = U0;	verts[0].y = V0;
+			verts[1].x = U1;	verts[1].y = V0;
+			verts[2].x = U1;	verts[2].y = V1;
+
+			verts[3].x = U0;	verts[3].y = V0;
+			verts[4].x = U1;	verts[4].y = V1;
+			verts[5].x = U0;	verts[5].y = V1;
+		}
+
+		/**
+		 * @brief Adds a number of quads to the buffer, moving STEP for each one.
+		 */
+		inline void BuildQuads(int pX,int pY,int pWidth,int pHeight,int pCount,int pXStep,int pYStep)
+		{
+			for(int n = 0 ; n < pCount ; n++, pX += pXStep, pY += pYStep )
+			{
+				BuildQuad(pX,pY,pWidth,pHeight);
+			}
+		}
+	};
+};
 
 constexpr float GetPI()
 {
@@ -173,11 +140,6 @@ constexpr float GetPI()
 constexpr float GetRadian()
 {
 	return 2.0f * GetPI();
-}
-
-constexpr float GetRadianToSignedShort()
-{
-	return 32767.0f / GetRadian();
 }
 
 constexpr float DegreeToRadian(float pDegree)

@@ -1,5 +1,12 @@
-#include "Graphics_GL.h"
+
+#include "Graphics.h"
 #include "GLDiagnostics.h"
+#include "GLShader.h"
+#include "GLTexture.h"
+#include "Style.h"
+#include "FreeTypeFont.h"
+#include "PlatformInterface_X11.h"
+
 
 #include <math.h>
 
@@ -13,7 +20,7 @@ Graphics* Graphics::Open(DisplayRotation pDisplayRotation)
 	{
 		THROW_MEANINGFUL_EXCEPTION("Graphics engine all ready allocated. Please only call Graphics::Open once");
 	}
-    theGraphics = new Graphics_GL(pDisplayRotation);
+    theGraphics = new Graphics(pDisplayRotation);
 	return theGraphics;
 }
 
@@ -32,7 +39,7 @@ Graphics* Graphics::Get()
 	return theGraphics;
 }
 
-Graphics_GL::Graphics_GL(DisplayRotation pDisplayRotation)
+Graphics::Graphics(DisplayRotation pDisplayRotation)
 {
     mPlatform = std::make_unique<PlatformInterface>();
 
@@ -80,15 +87,13 @@ Graphics_GL::Graphics_GL(DisplayRotation pDisplayRotation)
 	VERBOSE_MESSAGE("GLES Ready");
 }
 
-Graphics_GL::~Graphics_GL()
+Graphics::~Graphics()
 {
 	VERBOSE_MESSAGE("GLES destructor called");
 
 	VERBOSE_MESSAGE("On exit the following scratch memory buffers reached the sizes of...");
-	VERBOSE_MESSAGE("    mWorkBuffers.verticesInt16XY " << mWorkBuffers.verticesInt16XY.MemoryUsed() << " bytes");
-	VERBOSE_MESSAGE("    mWorkBuffers.verticesInt32XY " << mWorkBuffers.verticesInt32XY.MemoryUsed() << " bytes");
-	VERBOSE_MESSAGE("    mWorkBuffers.verticesFloatXY " << mWorkBuffers.verticesFloatXY.MemoryUsed() << " bytes");
-	VERBOSE_MESSAGE("    mWorkBuffers.uvShort " << mWorkBuffers.uvShort.MemoryUsed() << " bytes");
+	VERBOSE_MESSAGE("    mWorkBuffers.vertices " << mWorkBuffers.vertices.MemoryUsed() << " bytes");
+	VERBOSE_MESSAGE("    mWorkBuffers.uvs " << mWorkBuffers.uvs.MemoryUsed() << " bytes");
 
 	glBindTexture(GL_TEXTURE_2D,0);
 	CHECK_OGL_ERRORS();
@@ -113,7 +118,7 @@ Graphics_GL::~Graphics_GL()
 
 
 	// delete all free type fonts.
-#ifdef USE_FREETYPEFONTS
+
 	mFreeTypeFonts.clear();
 	if( mFreetype != nullptr )
 	{
@@ -123,7 +128,6 @@ Graphics_GL::~Graphics_GL()
 			VERBOSE_MESSAGE("Freetype font library deleted");
 		}
 	}
-#endif
 
 	// delete all textures.
 	for( auto& t : mTextures )
@@ -135,27 +139,95 @@ Graphics_GL::~Graphics_GL()
 	VERBOSE_MESSAGE("All done");
 }
 
-Rectangle Graphics_GL::GetDisplayRect()const
+Rectangle Graphics::GetDisplayRect()const
 {
     return Rectangle(0,0,GetDisplayWidth(),GetDisplayHeight());
 }
 
-RectangleF Graphics_GL::GetDisplayRectF()const
-{
-    return RectangleF(0.0f,0.0f,(float)GetDisplayWidth(),(float)GetDisplayHeight());
-}
-
-int32_t Graphics_GL::GetDisplayWidth()const
+int32_t Graphics::GetDisplayWidth()const
 {
     return mPlatform->GetWidth();
 }
 
-int32_t Graphics_GL::GetDisplayHeight()const
+int32_t Graphics::GetDisplayHeight()const
 {
     return mPlatform->GetHeight();
 }
 
-void Graphics_GL::BeginFrame()
+
+void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius)
+{
+	const int radius = (int)(std::min(std::min(pRect.GetHeight()/2,pRect.GetWidth()/2),pRadius));
+    // This uses the Midpoint circle algorithm.
+    // Did try with basic float trig and sin / cos but it caused issues with the curces at each corner not being the same.
+    int x = radius;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (radius / 2.0f );
+
+    // Little buffer for the segment that we calculate, it's 1/8th of the circle.
+    int vx[radius];
+    int vy[radius];
+
+    int vNum = 0;
+    while (x >= y)
+    {
+        vx[vNum] = x;
+        vy[vNum] = y;
+        vNum++;
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-radius << 1) + dx;
+        }
+    }
+
+    int top = pRect.top + radius;
+    int left = pRect.left + radius;
+    int right = pRect.right - radius;
+    int bottom = pRect.bottom - radius;
+
+    // Now build circle.
+    VertXY* verts = rBuffer.Restart(vNum*8);
+    for( int n = 0 ; n < vNum ; n++ )
+    {
+        assert( n + (vNum * 7) < (vNum*8) );
+        verts[(vNum * 0) + n].x = right + vx[n];
+        verts[(vNum * 0) + n].y = bottom + vy[n];
+
+        verts[(vNum * 2) - n - 1].x = right + vy[n];
+        verts[(vNum * 2) - n - 1].y = bottom + vx[n];
+
+        verts[(vNum * 2) + n].x = left - vy[n];
+        verts[(vNum * 2) + n].y = bottom + vx[n];
+
+        verts[(vNum * 4) - n - 1].x = left - vx[n];
+        verts[(vNum * 4) - n - 1].y = bottom + vy[n];
+
+        verts[(vNum * 4) + n].x = left - vx[n];
+        verts[(vNum * 4) + n].y = top - vy[n];
+
+        verts[(vNum * 6) - n - 1].x = left - vy[n];
+        verts[(vNum * 6) - n - 1].y = top - vx[n];
+
+        verts[(vNum * 6) + n].x = right + vy[n];
+        verts[(vNum * 6) + n].y = top - vx[n];
+
+        verts[(vNum * 8) - n - 1].x = right + vx[n];
+        verts[(vNum * 8) - n - 1].y = top - vy[n];
+    }
+}
+
+void Graphics::BeginFrame()
 {
 	mDiagnostics.frameNumber++;
 
@@ -167,13 +239,13 @@ void Graphics_GL::BeginFrame()
 	SetTransform(identity);
 }
 
-void Graphics_GL::EndFrame()
+void Graphics::EndFrame()
 {
 	glFlush();// This makes sure the display is fully up to date before we allow them to interact with any kind of UI. This is the specified use of this function.
 	mPlatform->SwapBuffers();
 }
 
-bool Graphics_GL::ProcessSystemEvents(EventTouchScreen mTouchEvent)
+bool Graphics::ProcessSystemEvents(EventTouchScreen mTouchEvent)
 {
     mPlatform->ProcessEvents(mTouchEvent,[this]()
     {
@@ -183,24 +255,97 @@ bool Graphics_GL::ProcessSystemEvents(EventTouchScreen mTouchEvent)
     return mExitRequest == false;
 }
 
-void Graphics_GL::GetFontRect(uint32_t pFont,RectangleF& rRect)
+uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 {
+	FT_Face loadedFace;
+	if( FT_New_Face(mFreetype,pFontName.c_str(),0,&loadedFace) != 0 )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Failed to load true type font " + pFontName);
+	}
 
+	const uint32_t fontID = mNextFontID++;
+	mFreeTypeFonts[fontID] = std::make_unique<FreeTypeFont>(loadedFace,pPixelHeight);
+
+	// Now we need to prepare the texture cache.
+	auto& font = mFreeTypeFonts.at(fontID);
+	font->BuildTexture(
+		mMaximumAllowedGlyph,
+		[this](int pWidth,int pHeight)
+		{
+			// Because the glyph rending to texture does not fill the whole texture the GL texture will not be created.
+			// Do I have to make a big memory buffer, fill it with zero, then free the memory.
+			auto zeroMemory = std::make_unique<uint8_t[]>(pWidth * pHeight);
+			memset(zeroMemory.get(),0,pWidth * pHeight);
+
+			return CreateTexture(pWidth,pHeight,zeroMemory.get(),TextureFormat::FORMAT_ALPHA);			
+		},
+		[this](uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels)
+		{
+			FillTexture(pTexture,pX,pY,pWidth,pHeight,pPixels,TextureFormat::FORMAT_ALPHA);
+		}
+	);
+
+	VERBOSE_MESSAGE("Free type font loaded: " << pFontName << " with internal ID of " << fontID << " Using texture " << font->mTexture);
+
+	return fontID;
 }
 
-void Graphics_GL::DrawFont(const Style& pStyle,int32_t pX,int32_t pY,const std::string& pText)
+void Graphics::FontDelete(uint32_t pFont)
 {
-
+	mFreeTypeFonts.erase(pFont);
 }
 
-void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
+
+void Graphics::FontPrint(uint32_t pFont,int pX,int pY,Colour pColour,const std::string_view& pText)
+{
+	auto& font = mFreeTypeFonts.at(pFont);
+
+	mWorkBuffers.vertices.Restart();
+	mWorkBuffers.uvs.Restart();
+
+	// Get where the uvs will be written too.
+	const char* ptr = pText.data();
+
+	font->BuildQuads(ptr,pX,pY,mWorkBuffers.vertices,mWorkBuffers.uvs);
+
+	assert(font->mTexture);
+	EnableShader(mShaders.TextureAlphaOnly2D);
+	mShaders.CurrentShader->SetTexture(font->mTexture);
+	mShaders.CurrentShader->SetGlobalColour(pColour);
+
+	// how many?
+	const int numVerts = mWorkBuffers.vertices.Used();
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::TEXCOORD,
+				2,
+				GL_FLOAT,
+				GL_TRUE,
+				4,mWorkBuffers.uvs.Data());
+
+	VertexPtr(2,GL_FLOAT,mWorkBuffers.vertices.Data());
+	glDrawArrays(GL_TRIANGLES,0,numVerts);
+	CHECK_OGL_ERRORS();
+}
+
+void Graphics::FontPrintf(uint32_t pFont,int pX,int pY,Colour pColour,const char* pFmt,...)
+{
+	char buf[1024];	
+	va_list args;
+	va_start(args, pFmt);
+	vsnprintf(buf, sizeof(buf), pFmt, args);
+	va_end(args);
+	FontPrint(pFont,pX,pY,pColour, buf);
+}
+
+void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 {
     if( pStyle.mRadius )
     {
-		GetRoundedRectanglePoints(pRect,mWorkBuffers.verticesFloatXY,pStyle.mRadius);
+		GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
 
-		const int numPoints = mWorkBuffers.verticesFloatXY.Used();
-		const VertFloatXY* points = mWorkBuffers.verticesFloatXY.Data();
+		const int numPoints = mWorkBuffers.vertices.Used();
+		const VertXY* points = mWorkBuffers.vertices.Data();
 
         EnableShader(mShaders.ColourOnly2D);
         mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
@@ -220,10 +365,10 @@ void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
             }
             else
             {
-				const float shrinkX = ((float)pRect.width - pStyle.mBorderSize) / pRect.width;
-				const float shrinkY = ((float)pRect.height - pStyle.mBorderSize) / pRect.height;
+				const float shrinkX = ((float)pRect.GetWidth() - pStyle.mBorderSize) / pRect.GetWidth();
+				const float shrinkY = ((float)pRect.GetHeight() - pStyle.mBorderSize) / pRect.GetHeight();
 
-				auto MakeBorder = [shrinkX,shrinkY,pRect](VertFloatXY* rDest,const VertFloatXY& pSource)
+				auto MakeBorder = [shrinkX,shrinkY,pRect](VertXY* rDest,const VertXY& pSource)
 				{
 					rDest[1].x = pSource.x;
 					rDest[1].y = pSource.y;
@@ -231,7 +376,7 @@ void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
 					rDest[0].y = ((pSource.y - pRect.GetCenterY()) * shrinkY) + pRect.GetCenterY();
 				};
 
-				VertFloatXY* border = (VertFloatXY*)mWorkBuffers.scratchRam.Restart(sizeof(VertFloatXY) * (numPoints+1) * 2);
+				VertXY* border = (VertXY*)mWorkBuffers.scratchRam.Restart(sizeof(VertXY) * (numPoints+1) * 2);
 				for(int n = 0 ; n < numPoints ; n++ )
 				{
 					MakeBorder(border,points[n]);
@@ -249,12 +394,12 @@ void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
     }
     else
     {
-        int16_t quad[8];    
+        float quad[8];    
         pRect.GetQuad(quad);
 
         EnableShader(mShaders.ColourOnly2D);
         mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
-        VertexPtr(2,GL_SHORT,quad);
+        VertexPtr(2,GL_FLOAT,quad);
         glDrawArrays(GL_TRIANGLE_FAN,0,4);
         CHECK_OGL_ERRORS();
 
@@ -275,7 +420,7 @@ void Graphics_GL::DrawRectangle(const RectangleF& pRect,const Style& pStyle)
     }
 }
 
-void Graphics_GL::DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth)
+void Graphics::DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth)
 {
 	if( pWidth < 2 )
 	{
@@ -284,14 +429,14 @@ void Graphics_GL::DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColou
 		EnableShader(mShaders.ColourOnly2D);
 		mShaders.CurrentShader->SetGlobalColour(pColour);
 
-		VertexPtr(2,GL_SHORT,quad);
+		VertexPtr(2,GL_FLOAT,quad);
 		glDrawArrays(GL_LINES,0,2);
 		CHECK_OGL_ERRORS();
 	}
 	else
 	{
 		pWidth /= 2;
-		VertInt16XY p[6];
+		VertXY p[6];
 
 		if( pFromY < pToY )
 		{
@@ -343,13 +488,13 @@ void Graphics_GL::DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColou
 		EnableShader(mShaders.ColourOnly2D);
 		mShaders.CurrentShader->SetGlobalColour(pColour);
 
-		VertexPtr(2,GL_SHORT,p);
+		VertexPtr(2,GL_FLOAT,p);
 		glDrawArrays(GL_TRIANGLE_FAN,0,6);
 		CHECK_OGL_ERRORS();
 	}
 }
 
-void Graphics_GL::SetRenderingDefaults()
+void Graphics::SetRenderingDefaults()
 {
 	glViewport(0, 0, (GLsizei)mPhysical.Width, (GLsizei)mPhysical.Height);
 	glDepthRangef(0.0f,1.0f);
@@ -370,7 +515,7 @@ void Graphics_GL::SetRenderingDefaults()
 	CHECK_OGL_ERRORS();
 }
 
-void Graphics_GL::BuildDebugTexture()
+void Graphics::BuildDebugTexture()
 {
 	VERBOSE_MESSAGE("Creating mDiagnostics.texture");
 	uint8_t pixels[16*16*4];
@@ -408,9 +553,8 @@ void Graphics_GL::BuildDebugTexture()
 	mDiagnostics.texture = CreateTexture(16,16,pixels,TextureFormat::FORMAT_RGBA);
 }
 
-void Graphics_GL::InitFreeTypeFont()
+void Graphics::InitFreeTypeFont()
 {
-#ifdef USE_FREETYPEFONTS	
 	if( FT_Init_FreeType(&mFreetype) == 0 )
 	{
 		VERBOSE_MESSAGE("Freetype font library created");
@@ -419,10 +563,9 @@ void Graphics_GL::InitFreeTypeFont()
 	{
 		THROW_MEANINGFUL_EXCEPTION("Failed to init free type font library");
 	}
-#endif
 }
 
-void Graphics_GL::SetProjection2D()
+void Graphics::SetProjection2D()
 {
 	// Setup 2D frustum
 	memset(mMatrices.projection,0,sizeof(mMatrices.projection));
@@ -466,14 +609,14 @@ void Graphics_GL::SetProjection2D()
 	glDepthMask(false);    
 }
 
-void Graphics_GL::SetTransform(float pTransform[4][4])
+void Graphics::SetTransform(float pTransform[4][4])
 {
 	assert(mShaders.CurrentShader);
 	memcpy(mMatrices.transform,pTransform,sizeof(float) * 4 * 4);
 	mShaders.CurrentShader->SetTransform(pTransform);
 }
 
-void Graphics_GL::BuildShaders()
+void Graphics::BuildShaders()
 {
 	const char* ColourOnly2D_VS = R"(
 		uniform mat4 u_proj_cam;
@@ -686,7 +829,7 @@ void Graphics_GL::BuildShaders()
 	mShaders.TextureOnly3D = std::make_unique<GLShader>("TextureOnly3D",TextureOnly3D_VS,TextureOnly3D_PS);	
 }
 
-void Graphics_GL::EnableShader(GLShaderPtr pShader)
+void Graphics::EnableShader(GLShaderPtr pShader)
 {
 	assert( pShader );
 	if( mShaders.CurrentShader != pShader )
@@ -697,7 +840,7 @@ void Graphics_GL::EnableShader(GLShaderPtr pShader)
 	}
 }
 
-void Graphics_GL::VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer)
+void Graphics::VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer)
 {
 	if(pNum_coord < 2 || pNum_coord > 3)
 	{
@@ -714,7 +857,7 @@ void Graphics_GL::VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer)
 
 }
 
-uint32_t Graphics_GL::CreateTexture(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered,bool pGenerateMipmaps)
+uint32_t Graphics::CreateTexture(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered,bool pGenerateMipmaps)
 {
 	const GLint format = TextureFormatToGLFormat(pFormat);
 	if( format == GL_INVALID_ENUM )
@@ -812,7 +955,7 @@ uint32_t Graphics_GL::CreateTexture(int pWidth,int pHeight,const uint8_t* pPixel
 	return newTexture;
 }
 
-void Graphics_GL::FillTexture(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pGenerateMips)
+void Graphics::FillTexture(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pGenerateMips)
 {
 	glBindTexture(GL_TEXTURE_2D,pTexture);
 
@@ -837,7 +980,7 @@ void Graphics_GL::FillTexture(uint32_t pTexture,int pX,int pY,int pWidth,int pHe
 	glBindTexture(GL_TEXTURE_2D,0);//Because we had to change it to setup the texture! Stupid GL!
 }
 
-void Graphics_GL::DeleteTexture(uint32_t pTexture)
+void Graphics::DeleteTexture(uint32_t pTexture)
 {
 	if( pTexture == mDiagnostics.texture )
 	{
@@ -851,12 +994,12 @@ void Graphics_GL::DeleteTexture(uint32_t pTexture)
 	}
 }
 
-int Graphics_GL::GetTextureWidth(uint32_t pTexture)const
+int Graphics::GetTextureWidth(uint32_t pTexture)const
 {
 	return mTextures.at(pTexture)->mWidth;
 }
 
-int Graphics_GL::GetTextureHeight(uint32_t pTexture)const
+int Graphics::GetTextureHeight(uint32_t pTexture)const
 {
 	return mTextures.at(pTexture)->mHeight;
 }

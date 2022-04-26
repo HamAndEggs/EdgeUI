@@ -53,8 +53,6 @@ struct GLShader
 	int LoadShader(int type, const char* shaderCode);
 };
 
-typedef std::shared_ptr<GLShader> GLShaderPtr;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
 

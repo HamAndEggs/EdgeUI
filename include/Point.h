@@ -5,33 +5,29 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-template <typename POINT_TYPE>struct PointTemplate
+struct Point
 {
-    PointTemplate() = default;
-    PointTemplate(const PointTemplate<POINT_TYPE>& pPoint)
+    Point() = default;
+    Point(const Point& pPoint)
     {
-        x = pPoint.x;
-        y = pPoint.y;
+        *this = pPoint;
     }
 
-    PointTemplate(POINT_TYPE pX,POINT_TYPE pY)
+    Point(float pX,float pY)
     {
         x = pX;
         y = pY;
     }
 
-    const PointTemplate<POINT_TYPE>& operator = (const PointTemplate<POINT_TYPE>& pPoint)
+    const Point& operator = (const Point& pPoint)
     {
         x = pPoint.x;
         y = pPoint.y;
         return pPoint;
     }
 
-    POINT_TYPE x,y;
+    float x,y;
 };
-
-typedef PointTemplate<int32_t> Point;
-typedef PointTemplate<float> PointF;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 };//namespace eui{

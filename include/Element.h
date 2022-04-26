@@ -34,11 +34,11 @@ public:
 
     /**
      * @brief The inner Rectangle that the control uses for it's children and content.
-     * @return RectangleF 
+     * @return Rectangle 
      */
-    virtual RectangleF GetContentRectangle();
+    virtual Rectangle GetContentRectangle();
 
-    virtual RectangleF GetParentRectangle();
+    virtual Rectangle GetParentRectangle();
 
     const std::string& GetID(){return mID;}
     Element* GetParent(){return mParent;}
@@ -46,15 +46,14 @@ public:
     virtual bool GetIsVisible()const{return mVisible;}
     virtual bool GetIsEnabled()const{return mEnabled;}
 
-    virtual const PointF& GetSize()const{return mSize;}
-
     /**
      * @brief Set the position based on fraction of the width of the parent and relitive to it's x.
      */
-    virtual void SetPos(const PointF& pPos);
-    virtual void SetPos(float pX,float pY){SetPos(PointF(pX,pY));}
-    virtual void SetSize(const PointF& pSize);
-    virtual void SetSize(float pWidth,float pHeight){SetSize(PointF(pWidth,pHeight));}
+    virtual void SetLeftTop(const Point& pPos);
+    virtual void SetLeftTop(float pX,float pY){SetLeftTop(Point(pX,pY));}
+    virtual void SetRightBottom(const Point& pSize);
+    virtual void SetRightBottom(float pX,float pY){SetRightBottom(Point(pX,pY));}
+    virtual void SetPadding(float pPadding);
 
     virtual void SetID(const std::string& pID){mID = pID;}
 
@@ -71,7 +70,7 @@ public:
     virtual void SetBorderSize(float pBorderSize){mStyle.mBorderSize = pBorderSize;}
 
     virtual void Attach(Element* pElement);
-
+    virtual void Remove(Element* pElement);
     /**
      * @brief Updates all elements in the tree, if they are visible.
      * Doing full update before the draw allows all dependacies to have the correct data for rendering.
@@ -104,8 +103,8 @@ private:
     bool mEnabled = true;                   //!< If true, will be drawn in an active state. If false will be drawn in an inactive state. Unlike visible, will receive all messages.
 
     Style mStyle;
-    PointF mPos = {0.0f,0.0f};    //!< For now this is pixel corrdinates, later I may change to a ratio of the size of parent.
-    PointF mSize = {1.0f,1.0f};   //!< Size is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
+    Rectangle mRect = {0.0f,0.0f,1.0f,1.0f};    //!< Rect is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
+    Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
 
     struct
     {

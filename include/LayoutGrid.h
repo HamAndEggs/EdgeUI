@@ -24,6 +24,8 @@ public:
         return mCells[pColumn][pRow];
     }
 
+    void ReplaceCell(uint32_t pColumn, uint32_t pRow, Element* pNewCell);
+
 protected:
     LayoutGrid(uint32_t pColumns, uint32_t pRows);
 

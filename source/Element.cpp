@@ -9,7 +9,7 @@ namespace eui{
 Element* Element::Create(float pWidth,float pHeight)
 {
     Element* root = new Element();
-    root->SetSize(pWidth,pHeight);
+    root->SetRightBottom(pWidth,pHeight);
     return root;
 }
 
@@ -27,45 +27,60 @@ Element::~Element()
     }
 }
 
-RectangleF Element::GetContentRectangle()
+Rectangle Element::GetContentRectangle()
 {
-    const RectangleF parentContentRect = GetParentRectangle();
+    const Rectangle parentContentRect = GetParentRectangle();
 
-    RectangleF contentRect;
+    const Rectangle contentRect(parentContentRect.GetX(mRect.left),parentContentRect.GetY(mRect.top),
+                                parentContentRect.GetX(mRect.right),parentContentRect.GetY(mRect.bottom));
 
-    contentRect.x = parentContentRect.x + (parentContentRect.width * mPos.x);
-    contentRect.y = parentContentRect.y + (parentContentRect.height * mPos.y);
-    contentRect.width = parentContentRect.width * mSize.x;
-    contentRect.height = parentContentRect.height * mSize.y;
-
-    return contentRect;
+//    return contentRect;
+    return Rectangle(contentRect.GetX(mPadding.left),contentRect.GetY(mPadding.top),contentRect.GetX(mPadding.right),contentRect.GetY(mPadding.bottom));
 }
 
-RectangleF Element::GetParentRectangle()
+Rectangle Element::GetParentRectangle()
 {
     if( mParent )
     {
         return mParent->GetContentRectangle();
     }
-    return Graphics::Get()->GetDisplayRectF();
+    return Graphics::Get()->GetDisplayRect();
 }
 
 
-void Element::SetPos(const PointF& pPos)
+void Element::SetLeftTop(const Point& pPos)
 {
-    mPos = pPos;
+    mRect.left = pPos.x;
+    mRect.top = pPos.y;
 }
 
-void Element::SetSize(const PointF& pSize)
+void Element::SetRightBottom(const Point& pPos)
 {
-    mSize = pSize;
+    mRect.right = pPos.x;
+    mRect.bottom = pPos.y;
+
 }
+
+void Element::SetPadding(float pPadding)
+{
+    mPadding.left = pPadding;
+    mPadding.right = 1.0f - pPadding;
+    mPadding.top = pPadding;
+    mPadding.bottom = 1.0f - pPadding;
+}
+
 
 void Element::Attach(Element* pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
     mChildren.push_back(pElement);
     pElement->mParent = this;
+}
+
+void Element::Remove(Element* pElement)
+{
+    pElement->mParent = nullptr;
+    mChildren.remove(pElement);
 }
 
 void Element::Update()
@@ -84,7 +99,7 @@ void Element::Draw()
     if( mVisible == false )
         return;
 
-    RectangleF contentRect = GetContentRectangle();
+    Rectangle contentRect = GetContentRectangle();
 
     if( mStyle.mBackground != COLOUR_NONE )
     {
@@ -99,7 +114,7 @@ void Element::Draw()
 
 bool Element::TouchEvent(float pX,float pY,bool pTouched)
 {
-    const RectangleF contentRect = GetContentRectangle();    
+    const Rectangle contentRect = GetContentRectangle();    
     if( contentRect.ContainsPoint(pX,pY) )
     {
         if( pTouched )
