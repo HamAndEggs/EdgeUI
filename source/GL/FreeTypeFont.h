@@ -29,7 +29,7 @@ struct FreeTypeFont
 		int x_off,y_off;	//!< offset from current x and y that the quad is rendered.
 		struct
 		{// Where, in 16bit UV's, the glyph is.
-			int x,y;
+			float x,y;
 		}uv[2];
 	};
 
@@ -49,7 +49,10 @@ struct FreeTypeFont
 			std::function<uint32_t(int pWidth,int pHeight)> pCreateTexture,
 			std::function<void(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels)> pFillTexture);
 
-	void BuildQuads(const char* pText,int pX,int pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const;
+	void BuildQuads(const char* pText,float pX,float pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const;
+
+	Rectangle GetRect(const std::string_view& pText)const;
+
 
 	const std::string mFontName; //<! Helps with debugging.
 	FT_Face mFace;								//<! The font we are rending from.

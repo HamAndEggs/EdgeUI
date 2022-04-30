@@ -259,7 +259,7 @@ void FreeTypeFont::BuildTexture(
 	VERBOSE_MESSAGE("Font max glyph size requirement for cache is " << maxX << " " << maxY << " mBaselineHeight = " << mBaselineHeight);
 	if( maxX > pMaximumAllowedGlyph || maxY > pMaximumAllowedGlyph )
 	{
-		THROW_MEANINGFUL_EXCEPTION("Font: " + mFontName + " requires a very large texture as it's maximun size glyph is very big, maxX == " + std::to_string(maxX) + " maxY == " + std::to_string(maxY) + ". This creation has been halted. Please reduce size of font!");
+		THROW_MEANINGFUL_EXCEPTION("Font: " + mFontName + " requires a very large texture as it's maximum size glyph is very big, maxX == " + std::to_string(maxX) + " maxY == " + std::to_string(maxY) + ". This creation has been halted. Please reduce size of font!");
 	}
 
 	auto nextPow2 = [](int v)
@@ -273,17 +273,17 @@ void FreeTypeFont::BuildTexture(
 	};
 
 	// Work out a texture size that will fit. Need 96 slots. 32 -> 127
-	const int width = nextPow2(maxX * 12);
-	const int height = nextPow2(maxY * 8);
+	const float width = nextPow2(maxX * 12);
+	const float height = nextPow2(maxY * 8);
 	VERBOSE_MESSAGE("Texture size needed is << " << width << "x" << height);
 
 	mTexture = pCreateTexture(width,height);
 	assert(mTexture);
 
 	// Now get filling. Could have a lot of wasted space, but I am not getting into complicated packing algos at load time. Take it offline. :)
-	const int cellWidth = width / 12;
-	const int cellHeight = height / 8;
-	const int maxUV = 32767;
+	const float cellWidth = width / 12;
+	const float cellHeight = height / 8;
+
 	int y = 0;
 	int x = 0;
 	for( FT_UInt c = 0 ; c < 256 ; c++ )
@@ -293,8 +293,8 @@ void FreeTypeFont::BuildTexture(
 		{
 			auto& g = mGlyphs.at(index);
 			auto& p = glyphsPixels.at(index);
-			const int cx = (x * cellWidth) + (cellWidth/2) - (g.width / 2);
-			const int cy = (y * cellHeight) + (cellHeight/2) - (g.height / 2);
+			const float cx = (x * cellWidth) + (cellWidth/2) - (g.width / 2);
+			const float cy = (y * cellHeight) + (cellHeight/2) - (g.height / 2);
 			if( p.size() > 0 )
 			{
 				pFillTexture(
@@ -306,10 +306,10 @@ void FreeTypeFont::BuildTexture(
 					p.data()
 					);
 
-				g.uv[0].x = (cx * maxUV) / width;
-				g.uv[0].y = (cy * maxUV) / height;
-				g.uv[1].x = ((cx + g.width) * maxUV)  / width;
-				g.uv[1].y = ((cy + g.height) * maxUV) / height;
+				g.uv[0].x = cx / width;
+				g.uv[0].y = cy / height;
+				g.uv[1].x = (cx + g.width)  / width;
+				g.uv[1].y = (cy + g.height) / height;
 			}
 			else
 			{
@@ -330,7 +330,7 @@ void FreeTypeFont::BuildTexture(
 	}	
 }
 
-void FreeTypeFont::BuildQuads(const char* pText,int pX,int pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const
+void FreeTypeFont::BuildQuads(const char* pText,float pX,float pY,VertXY::Buffer& pVertices,VertXY::Buffer& pUVs)const
 {
 	FT_UInt glyph = 0;
 	while( (glyph = GetNextGlyph(pText)) != 0 )
@@ -356,5 +356,36 @@ void FreeTypeFont::BuildQuads(const char* pText,int pX,int pY,VertXY::Buffer& pV
 		}
 	}
 }
+
+Rectangle FreeTypeFont::GetRect(const std::string_view& pText)const
+{
+	Rectangle r = {0,0,0,0};
+
+	const char* text = pText.data();
+	FT_UInt glyph = 0;
+	float x = 0;
+	while( (glyph = GetNextGlyph(text)) != 0 )
+	{
+		const int index = GetGlyphIndex(glyph);
+		if( index < 0 )
+		{
+			x += mSpaceAdvance;
+		}
+		else
+		{
+			auto&g = mGlyphs.at(index);
+
+			const float px = x + g.x_off;
+			const float py = g.y_off;
+
+			r.AddPoint(px,py);
+			r.AddPoint(px + g.width,py + g.height);
+
+			x += g.advance;
+		}
+	}
+	return r;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{

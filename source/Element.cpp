@@ -13,6 +13,13 @@ Element* Element::Create(float pWidth,float pHeight)
     return root;
 }
 
+Element* Element::Create(const Style& pStyle,float pWidth,float pHeight)
+{
+    Element* root = Create(pWidth,pHeight);
+    root->SetStyle(pStyle);
+    return root;
+}
+
 Element::Element()
 {
     SET_DEFAULT_ID();
@@ -27,7 +34,7 @@ Element::~Element()
     }
 }
 
-Rectangle Element::GetContentRectangle()
+Rectangle Element::GetContentRectangle()const
 {
     const Rectangle parentContentRect = GetParentRectangle();
 
@@ -38,7 +45,7 @@ Rectangle Element::GetContentRectangle()
     return Rectangle(contentRect.GetX(mPadding.left),contentRect.GetY(mPadding.top),contentRect.GetX(mPadding.right),contentRect.GetY(mPadding.bottom));
 }
 
-Rectangle Element::GetParentRectangle()
+Rectangle Element::GetParentRectangle()const
 {
     if( mParent )
     {
@@ -47,6 +54,18 @@ Rectangle Element::GetParentRectangle()
     return Graphics::Get()->GetDisplayRect();
 }
 
+int Element::GetFont()const
+{
+    if( mFont > 0 )
+    {
+        return mFont;
+    }
+    else if( mParent )
+    {
+        return mParent->GetFont();
+    }
+    return 0;
+}
 
 void Element::SetLeftTop(const Point& pPos)
 {
@@ -69,6 +88,16 @@ void Element::SetPadding(float pPadding)
     mPadding.bottom = 1.0f - pPadding;
 }
 
+void Element::SetTextF(const char* pFmt,...)
+{
+    assert(pFmt);
+    char buf[1024];
+	va_list args;
+	va_start(args, pFmt);
+	vsnprintf(buf, sizeof(buf), pFmt, args);
+	va_end(args);
+	SetText(buf);
+}
 
 void Element::Attach(Element* pElement)
 {
@@ -85,30 +114,49 @@ void Element::Remove(Element* pElement)
 
 void Element::Update()
 {
-    if( mVisible == false )
-        return;
-
-    for( auto e : mChildren )
+    if( mActive )
     {
-        e->Update();
+        if( mEvents.OnUpdate )
+        {
+            mEvents.OnUpdate(this);
+        }
+
+        for( auto e : mChildren )
+        {
+            e->Update();
+        }
     }
 }
 
-void Element::Draw()
+void Element::Draw(Graphics* pGraphics)
 {
-    if( mVisible == false )
-        return;
-
-    Rectangle contentRect = GetContentRectangle();
-
-    if( mStyle.mBackground != COLOUR_NONE )
+    if( mVisible )
     {
-        Graphics::Get()->DrawRectangle(contentRect,mStyle);
-    }
+        const Rectangle contentRect = GetContentRectangle();
+        
+        if( mStyle.mBackground != COLOUR_NONE )
+        {
+            pGraphics->DrawRectangle(contentRect,mStyle);
+        }
 
-    for( auto& e : mChildren )
-    {
-        e->Draw();
+        if( mText.size() > 0 )
+        {
+            const int font = GetFont();
+            if( font > 0 )
+            {
+                pGraphics->FontPrint(font,contentRect,mStyle.mAlignment,mStyle.mForground,mText);
+            }
+        }
+
+        if( mEvents.OnDraw )
+        {
+            mEvents.OnDraw(this);
+        }
+
+        for( auto& e : mChildren )
+        {
+            e->Draw(pGraphics);
+        }
     }
 }
 
@@ -122,7 +170,7 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
             // Is it in our rect?
             if( mEvents.OnPressed )
             {
-                if( mEvents.OnPressed(*this) )
+                if( mEvents.OnPressed(this) )
                 {
                     return true;
                 }

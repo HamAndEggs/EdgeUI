@@ -14,12 +14,10 @@ namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
 class Element;
-typedef std::function<bool(Element& pElement)> ElementEvent;
+typedef std::function<bool(Element* pElement)> ElementEvent;
 
 /**
- * @brief The base element that all renderable parts of the UI are constructed from. It is a container, does not render anything but does pass on rendering to children.
- * The rendering of the UI is done everyframe. This saves on work having to compute posible changes. Shifts the work onto the GPU.
- * Some members of this type are calculated when their dependencies change. This will save some cpu when rendering.
+ * @brief 
  */
 class Element
 {
@@ -29,6 +27,7 @@ public:
      * @brief Width and Height are fraction of parent.
      */
     static Element* Create(float pWidth = 1.0f,float pHeight = 1.0f);
+    static Element* Create(const Style& pStyle,float pWidth = 1.0f,float pHeight = 1.0f);
 
     virtual ~Element();
 
@@ -36,15 +35,26 @@ public:
      * @brief The inner Rectangle that the control uses for it's children and content.
      * @return Rectangle 
      */
-    virtual Rectangle GetContentRectangle();
+    virtual Rectangle GetContentRectangle()const;
+    virtual Rectangle GetParentRectangle()const;
 
-    virtual Rectangle GetParentRectangle();
+    const std::string GetID()const{return mID;}
+    const Element* GetParent()const{return mParent;}
+    int GetFont()const;
 
-    const std::string& GetID(){return mID;}
-    Element* GetParent(){return mParent;}
+    /**
+     * @brief Gets a reference to the internal style so you can modify it.
+     */
+    Style& GetStyle(){return mStyle;}
 
-    virtual bool GetIsVisible()const{return mVisible;}
-    virtual bool GetIsEnabled()const{return mEnabled;}
+    /**
+     * @brief For const objects, returns a copy.
+     * You not allowed to modify const object.
+     */
+    Style GetStyle()const{return mStyle;}
+
+    bool GetIsVisible()const{return mVisible;}
+    bool GetIsActive()const{return mActive;}
 
     /**
      * @brief Set the position based on fraction of the width of the parent and relitive to it's x.
@@ -56,18 +66,19 @@ public:
     virtual void SetPadding(float pPadding);
 
     virtual void SetID(const std::string& pID){mID = pID;}
+    virtual void SetText(const std::string& pText){mText = pText;}
+    virtual void SetTextF(const char* pFmt,...);
+    virtual void SetFont(int pFont){mFont = pFont;}
+    virtual void SetStyle(const Style& pStyle){mStyle = pStyle;}
 
+    virtual void SetVisible(bool pVisible){mVisible = pVisible;}
+    virtual void SetActive(bool pActive){mActive = pActive;}
+
+    virtual void SetOnUpdate(ElementEvent pHandler){mEvents.OnUpdate = pHandler;}
+    virtual void SetOnDraw(ElementEvent pHandler){mEvents.OnDraw = pHandler;}
     virtual void SetOnPressed(ElementEvent pHandler){mEvents.OnPressed = pHandler;}
     virtual void SetOnDrag(ElementEvent pHandler){mEvents.OnDrag = pHandler;}
     virtual void SetOnKey(ElementEvent pHandler){mEvents.OnKey = pHandler;}
-
-    virtual void SetForground(Colour pColour){mStyle.mForground = pColour;}
-    virtual void SetBackground(Colour pColour){mStyle.mBackground = pColour;}
-    virtual void SetBackground(Colour pFromGradient,Colour pToGradient,float pGradientDirection = 0){mStyle.mBackground = pFromGradient;mStyle.mBackgroundGradient = pToGradient; mStyle.mGradientDirection = pGradientDirection;}
-    virtual void SetBorder(float pSize,Colour pColour = COLOUR_BLACK){mStyle.mBorderSize = pSize; mStyle.mBorder = pColour;}
-    
-    virtual void SetRadius(float pRadius){mStyle.mRadius = pRadius;}
-    virtual void SetBorderSize(float pBorderSize){mStyle.mBorderSize = pBorderSize;}
 
     virtual void Attach(Element* pElement);
     virtual void Remove(Element* pElement);
@@ -77,7 +88,7 @@ public:
      */
     virtual void Update();
 
-    virtual void Draw();
+    virtual void Draw(Graphics* pGraphics);
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -89,9 +100,7 @@ public:
 
 protected:
     /**
-     * @brief Force the creation from the factory functions.
-     * This is because elements have shadered pointers or can have shadered pointers to each other.
-     * If an element is created on the stack this can cause an object to be deleted twice.
+     * @brief 
      */
     Element();
 
@@ -99,8 +108,10 @@ private:
     Element* mParent = nullptr;
     std::list<Element*> mChildren;
     std::string mID;                        //!< If set can be used to search from an element.
-    bool mVisible = true;                   //!< If true, the element and it's children will receive messages and be drawn. If not it would be as if they did not exists.
-    bool mEnabled = true;                   //!< If true, will be drawn in an active state. If false will be drawn in an inactive state. Unlike visible, will receive all messages.
+    std::string mText;                      //!< If set, it is displayed, based on settings in the style.
+    int mFont = 0;                          //!< The font to use to render text, if zero, will use parents. Used GetFont to fetch the font to render with.
+    bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
+    bool mActive = true;                    //!< If true, will update, if false will not be updated and it's childrent will not be. May still be drawn.
 
     Style mStyle;
     Rectangle mRect = {0.0f,0.0f,1.0f,1.0f};    //!< Rect is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.

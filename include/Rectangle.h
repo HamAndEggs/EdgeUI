@@ -58,6 +58,19 @@ struct Rectangle
         bottom-= pY;
     }
 
+    /**
+     * @brief Enlarges the rect so that the point is contained
+     */
+    void AddPoint(float pX,float pY)
+    {
+        left = std::min(left,pX);
+        right = std::max(right,pX);
+        top = std::min(top,pY);
+        bottom = std::max(bottom,pY);
+
+        assert(ContainsPoint(pX,pY));
+    }
+
     float GetCenterX()const
     {
         return (left + right) / 2.0f;

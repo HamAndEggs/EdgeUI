@@ -6,7 +6,6 @@ namespace eui{
 LayoutGrid* LayoutGrid::Create(uint32_t pColumns, uint32_t pRows)
 {
     LayoutGrid* layout = new LayoutGrid(pColumns,pRows);
-    layout->SetForground(COLOUR_WHITE);
     return layout;
 }
 

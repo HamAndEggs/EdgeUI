@@ -103,12 +103,16 @@ public:
 
     uint32_t FontLoad(const std::string& pFontName,int pPixelHeight = 40);
     void FontDelete(uint32_t pFont);
-    void FontPrint(uint32_t pFont,int32_t pX,int32_t pY,Colour pColour,const std::string_view& pText);
-    void FontPrintf(uint32_t pFont,int pX,int pY,Colour pColour,const char* pFmt,...);
+    void FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const std::string_view& pText);
+    void FontPrintf(uint32_t pFont,float pX,float pY,Colour pColour,const char* pFmt,...);
+    void FontPrint(uint32_t pFont,const Rectangle& pRect,const Alignment pAlignment,Colour pColour,const std::string_view& pText);
+    Rectangle FontGetRect(uint32_t pFont,const std::string_view& pText)const;
+	void FontSetMaximumAllowedGlyph(int pMaxSize){mMaximumAllowedGlyph = pMaxSize;} // The default size is 128 per character. Any bigger will throw an exception, this allows you to go bigger, but kiss good by to vram. Really should do something else instead!
+
 
     void DrawRectangle(const Rectangle& pRect,const Style& pStyle);
 
-    void DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth = 1);
+    void DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 1);
 
 protected:
     bool mExitRequest = false;

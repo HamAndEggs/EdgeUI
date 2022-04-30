@@ -58,6 +58,39 @@ constexpr float ColourToFloat(uint8_t pColour)
 	return (float)pColour / 255.0f;
 }
 
+/**
+ * @brief Allows draw functions to take a rectangle and draw content with a given alignment, such as text.
+ * 
+ */
+enum AlignmentPrimitives
+{
+	ALIGN_MIN_EDGE		= (1<<0),
+	ALIGN_CENTER		= (1<<1),
+	ALIGN_MAX_EDGE		= (1<<2),
+};
+
+#define ALIGNMENT_MASK		0xffff
+#define ALIGNMENT_X_SHIFT	16
+#define ALIGNMENT_Y_SHIFT	0
+
+#define SET_ALIGNMENT(ALIGNMENT_PRIM_X,ALIGNMENT_PRIM_Y)	((ALIGNMENT_PRIM_X << ALIGNMENT_X_SHIFT)|(ALIGNMENT_PRIM_Y << ALIGNMENT_Y_SHIFT))
+#define GET_X_ALIGNMENT(ALIGNMENT_VALUE)					((ALIGNMENT_VALUE>>ALIGNMENT_X_SHIFT)&ALIGNMENT_MASK)
+#define GET_Y_ALIGNMENT(ALIGNMENT_VALUE)					((ALIGNMENT_VALUE>>ALIGNMENT_Y_SHIFT)&ALIGNMENT_MASK)
+
+typedef uint32_t Alignment;
+
+static const Alignment ALIGN_LEFT_TOP			= SET_ALIGNMENT(ALIGN_MIN_EDGE,	ALIGN_MIN_EDGE);
+static const Alignment ALIGN_CENTER_TOP			= SET_ALIGNMENT(ALIGN_CENTER,	ALIGN_MIN_EDGE);
+static const Alignment ALIGN_RIGHT_TOP			= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN_MIN_EDGE);
+
+static const Alignment ALIGN_LEFT_CENTER		= SET_ALIGNMENT(ALIGN_MIN_EDGE,	ALIGN_CENTER);
+static const Alignment ALIGN_CENTER_CENTER		= SET_ALIGNMENT(ALIGN_CENTER,	ALIGN_CENTER);
+static const Alignment ALIGN_RIGHT_CENTER		= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN_CENTER);
+
+static const Alignment ALIGN_LEFT_BOTTOM		= SET_ALIGNMENT(ALIGN_MIN_EDGE,	ALIGN_MAX_EDGE);
+static const Alignment ALIGN_CENTER_BOTTOM		= SET_ALIGNMENT(ALIGN_CENTER,	ALIGN_MAX_EDGE);
+static const Alignment ALIGN_RIGHT_BOTTOM		= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN_MAX_EDGE);
+
 // Basic 3D vertex with x,y,z and 32bit colour value.
 struct VertXYZC
 {
@@ -92,7 +125,7 @@ struct VertXY
 		/**
 		 * @brief Writes six vertices to the buffer.
 		 */
-		inline void BuildQuad(int pX,int pY,int pWidth,int pHeight)
+		inline void BuildQuad(float pX,float pY,float pWidth,float pHeight)
 		{
 			VertXY* verts = Next(6);
 			verts[0].x = pX;			verts[0].y = pY;
@@ -107,7 +140,7 @@ struct VertXY
 		/**
 		 * @brief Writes the UV's to six vertices in the correct order to match the quad built above.
 		 */
-		inline void AddUVRect(int U0,int V0,int U1,int V1)
+		inline void AddUVRect(float U0,float V0,float U1,float V1)
 		{
 			VertXY* verts = Next(6);
 			verts[0].x = U0;	verts[0].y = V0;
@@ -122,7 +155,7 @@ struct VertXY
 		/**
 		 * @brief Adds a number of quads to the buffer, moving STEP for each one.
 		 */
-		inline void BuildQuads(int pX,int pY,int pWidth,int pHeight,int pCount,int pXStep,int pYStep)
+		inline void BuildQuads(float pX,float pY,float pWidth,float pHeight,int pCount,int pXStep,int pYStep)
 		{
 			for(int n = 0 ; n < pCount ; n++, pX += pXStep, pY += pYStep )
 			{

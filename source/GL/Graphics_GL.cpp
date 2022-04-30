@@ -118,7 +118,6 @@ Graphics::~Graphics()
 
 
 	// delete all free type fonts.
-
 	mFreeTypeFonts.clear();
 	if( mFreetype != nullptr )
 	{
@@ -296,7 +295,7 @@ void Graphics::FontDelete(uint32_t pFont)
 }
 
 
-void Graphics::FontPrint(uint32_t pFont,int pX,int pY,Colour pColour,const std::string_view& pText)
+void Graphics::FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const std::string_view& pText)
 {
 	auto& font = mFreeTypeFonts.at(pFont);
 
@@ -321,21 +320,62 @@ void Graphics::FontPrint(uint32_t pFont,int pX,int pY,Colour pColour,const std::
 				2,
 				GL_FLOAT,
 				GL_TRUE,
-				4,mWorkBuffers.uvs.Data());
+				8,mWorkBuffers.uvs.Data());
 
 	VertexPtr(2,GL_FLOAT,mWorkBuffers.vertices.Data());
 	glDrawArrays(GL_TRIANGLES,0,numVerts);
 	CHECK_OGL_ERRORS();
 }
 
-void Graphics::FontPrintf(uint32_t pFont,int pX,int pY,Colour pColour,const char* pFmt,...)
+void Graphics::FontPrintf(uint32_t pFont,float pX,float pY,Colour pColour,const char* pFmt,...)
 {
-	char buf[1024];	
+	char buf[1024];
 	va_list args;
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
 	FontPrint(pFont,pX,pY,pColour, buf);
+}
+
+void Graphics::FontPrint(uint32_t pFont,const Rectangle& pRect,const Alignment pAlignment,Colour pColour,const std::string_view& pText)
+{
+	// First we need to get the rect of the text to be rendered.
+	const Rectangle fontRect = FontGetRect(pFont,pText);
+
+	const Alignment AX = GET_X_ALIGNMENT(pAlignment);
+	const Alignment AY = GET_Y_ALIGNMENT(pAlignment);
+
+	float X = pRect.left - fontRect.left;
+	if( AX == ALIGN_CENTER )
+	{
+		X += (pRect.GetWidth() * 0.5f) - (fontRect.GetWidth() * 0.5f);
+	}
+	else if( AX == ALIGN_MAX_EDGE )
+	{
+		X += pRect.GetWidth() - fontRect.GetWidth();
+	}
+
+	float Y = pRect.top - fontRect.top;
+	if( AY == ALIGN_CENTER )
+	{
+		Y += (pRect.GetHeight() * 0.5f) - (fontRect.GetHeight() * 0.5f);
+	}
+	else if( AY == ALIGN_MAX_EDGE )
+	{
+		Y += pRect.GetHeight() - fontRect.GetHeight();
+	}
+
+	FontPrint(pFont,X,Y,pColour,pText);
+}
+
+Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)const
+{
+	auto& font = mFreeTypeFonts.at(pFont);
+
+	// Get where the uvs will be written too.
+	const char* ptr = pText.data();
+
+	return font->GetRect(pText);
 }
 
 void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
@@ -420,11 +460,11 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
     }
 }
 
-void Graphics::DrawLine(int pFromX,int pFromY,int pToX,int pToY,Colour pColour,uint32_t pWidth)
+void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth)
 {
 	if( pWidth < 2 )
 	{
-		const int16_t quad[4] = {(int16_t)pFromX,(int16_t)pFromY,(int16_t)pToX,(int16_t)pToY};
+		const float quad[4] = {pFromX,pFromY,pToX,pToY};
 
 		EnableShader(mShaders.ColourOnly2D);
 		mShaders.CurrentShader->SetGlobalColour(pColour);
