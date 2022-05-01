@@ -30,14 +30,14 @@ LayoutGrid::LayoutGrid(uint32_t pColumns, uint32_t pRows):
     const float cellHeight = 1.0f / mRows;
 
     int n = 0;
-    for(int r = 0 ; r < mRows ; r++ )
+    for(int c = 0 ; c < mColumns ; c++ )
     {
-        std::vector<Element*> row;
-        for(int c = 0 ; c < mColumns ; c++ )
+        std::vector<Element*> column;
+        for(int r = 0 ; r < mRows ; r++ )
         {
             Element* e = Element::Create();
-            e->SetLeftTop(cellWidth * r,cellHeight * c);
-            e->SetRightBottom(cellWidth * (r+1),cellHeight * (c+1));
+            e->SetLeftTop(cellWidth * c,cellHeight * r);
+            e->SetRightBottom(cellWidth * (c+1),cellHeight * (r+1));
             Attach(e);
 /*            if( (r+c)&1 == 1 )
             {
@@ -48,9 +48,9 @@ LayoutGrid::LayoutGrid(uint32_t pColumns, uint32_t pRows):
                 e->SetBackground(COLOUR_BLUE);
             }*/
             e->SetID(std::to_string(n) );n++;
-            row.emplace_back(e);
+            column.emplace_back(e);
         }
-        mCells.emplace_back(row);
+        mCells.emplace_back(column);
     }
 }
 

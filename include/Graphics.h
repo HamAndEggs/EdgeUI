@@ -109,10 +109,55 @@ public:
     Rectangle FontGetRect(uint32_t pFont,const std::string_view& pText)const;
 	void FontSetMaximumAllowedGlyph(int pMaxSize){mMaximumAllowedGlyph = pMaxSize;} // The default size is 128 per character. Any bigger will throw an exception, this allows you to go bigger, but kiss good by to vram. Really should do something else instead!
 
-
+	/**
+	 * @brief Draws the rectangle based on style.
+	 * If texture is set, will fill with texture, otherwise
+	 * If background colour set, will fill rectangle.
+	 * Will not draw anything if no colour / texture set and no boarder defined.
+	 */
     void DrawRectangle(const Rectangle& pRect,const Style& pStyle);
 
     void DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 1);
+
+	void DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour = COLOUR_WHITE);
+
+	uint32_t TextureLoadPNG(const std::string& pFilename,bool pFiltered = false,bool pGenerateMipmaps = false);
+
+	/**
+	 * @brief Create a Texture object with the size passed in and a given name. 
+	 * pPixels is either RGB format 24bit or RGBA 32bit format is pHasAlpha is true.
+	 * pPixels can be null if you're going to use FillTexture later to set the image data.
+	 * But there is a GL gotcha with passing null, if you don't write to ALL the pixels the texture will not work. So if you're texture is always black you may not have filled it all.
+	 */
+	uint32_t TextureCreate(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered = false,bool pGenerateMipmaps = false);
+
+	/**
+	 * @brief Fill a sub rectangle, or the whole texture. Pixels is expected to be a continuous image data. So it's size is WidthxHeight of the region being updated.
+	 * Pixels must be in the format that the texture was originally created with.
+	 */
+	void TextureFill(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat = TextureFormat::FORMAT_RGB,bool pGenerateMips = false);
+
+	/**
+	 * @brief Delete the texture, will throw an exception is texture not found.
+	 * All textures are deleted when the GLES context is torn down so you only need to use this if you need to reclaim some memory.
+	 */
+	void TextureDelete(uint32_t pTexture);
+
+	/**
+	 * @brief Gets the width of the texture. Not recommended that this is called 1000's of times in a frame as it has to search a std::map for the object.
+	 */
+	int TextureGetWidth(uint32_t pTexture)const;
+
+
+	/**
+	 * @brief Gets the height of the texture. Not recommended that this is called 1000's of times in a frame as it has to search a std::map for the object.
+	 */
+	int TextureGetHeight(uint32_t pTexture)const;
+
+	/**
+	 * @brief Get the diagnostics texture for use to help with finding issues.
+	 */
+	uint32_t TextureGetDiagnostics()const{return mDiagnostics.texture;}
 
 protected:
     bool mExitRequest = false;
@@ -131,7 +176,9 @@ protected:
 		ScratchBuffer<uint8_t,128,16,512*512*4> scratchRam;// gets used for some temporary texture operations.
 		VertXY::Buffer vertices;
 		VertXY::Buffer uvs;
-	}mWorkBuffers; 
+	}mWorkBuffers;
+
+	std::unique_ptr<struct PNG_LOADER>mPNG;
 
 	std::unique_ptr<PlatformInterface> mPlatform;				//!< This is all the data needed to drive the rendering platform that this code sits on and used to render with.
 	std::map<uint32_t,std::unique_ptr<GLTexture>> mTextures; 	//!< Our textures. I reuse the GL texture index (handle) for my own. A handy value and works well.
@@ -195,41 +242,7 @@ protected:
 	void EnableShader(GLShaderPtr pShader);
 	void VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer);
 
-	/**
-	 * @brief Create a Texture object with the size passed in and a given name. 
-	 * pPixels is either RGB format 24bit or RGBA 32bit format is pHasAlpha is true.
-	 * pPixels can be null if you're going to use FillTexture later to set the image data.
-	 * But there is a GL gotcha with passing null, if you don't write to ALL the pixels the texture will not work. So if you're texture is always black you may not have filled it all.
-	 */
-	uint32_t CreateTexture(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered = false,bool pGenerateMipmaps = false);
 
-	/**
-	 * @brief Fill a sub rectangle, or the whole texture. Pixels is expected to be a continuous image data. So it's size is WidthxHeight of the region being updated.
-	 * Pixels must be in the format that the texture was originally created with.
-	 */
-	void FillTexture(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat = TextureFormat::FORMAT_RGB,bool pGenerateMips = false);
-
-	/**
-	 * @brief Delete the texture, will throw an exception is texture not found.
-	 * All textures are deleted when the GLES context is torn down so you only need to use this if you need to reclaim some memory.
-	 */
-	void DeleteTexture(uint32_t pTexture);
-
-	/**
-	 * @brief Gets the width of the texture. Not recommended that this is called 1000's of times in a frame as it has to search a std::map for the object.
-	 */
-	int GetTextureWidth(uint32_t pTexture)const;
-
-
-	/**
-	 * @brief Gets the height of the texture. Not recommended that this is called 1000's of times in a frame as it has to search a std::map for the object.
-	 */
-	int GetTextureHeight(uint32_t pTexture)const;
-
-	/**
-	 * @brief Get the diagnostics texture for use to help with finding issues.
-	 */
-	uint32_t GetDiagnosticsTexture()const{return mDiagnostics.texture;}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -6,13 +6,19 @@
 #include "Style.h"
 #include "FreeTypeFont.h"
 #include "PlatformInterface_X11.h"
-
+#include "TinyPNG.h"
 
 #include <math.h>
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 static Graphics* theGraphics = nullptr;
+
+struct PNG_LOADER
+{
+	tinypng::Loader loader;
+	std::vector<uint8_t> pixelBuffer;
+};
 
 Graphics* Graphics::Open(DisplayRotation pDisplayRotation)
 {
@@ -42,7 +48,7 @@ Graphics* Graphics::Get()
 Graphics::Graphics(DisplayRotation pDisplayRotation)
 {
     mPlatform = std::make_unique<PlatformInterface>();
-
+	mPNG = std::make_unique<PNG_LOADER>();
 	mPhysical.Width = mPlatform->GetWidth();
 	mPhysical.Height = mPlatform->GetHeight();
 
@@ -276,11 +282,11 @@ uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 			auto zeroMemory = std::make_unique<uint8_t[]>(pWidth * pHeight);
 			memset(zeroMemory.get(),0,pWidth * pHeight);
 
-			return CreateTexture(pWidth,pHeight,zeroMemory.get(),TextureFormat::FORMAT_ALPHA);			
+			return TextureCreate(pWidth,pHeight,zeroMemory.get(),TextureFormat::FORMAT_ALPHA);			
 		},
 		[this](uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels)
 		{
-			FillTexture(pTexture,pX,pY,pWidth,pHeight,pPixels,TextureFormat::FORMAT_ALPHA);
+			TextureFill(pTexture,pX,pY,pWidth,pHeight,pPixels,TextureFormat::FORMAT_ALPHA);
 		}
 	);
 
@@ -380,31 +386,68 @@ Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)con
 
 void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 {
-    if( pStyle.mRadius )
-    {
-		GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+	if( pStyle.mTexture )
+	{
+		// Later this will respect the rounded corners and board of the style.
+		if( pStyle.mRadius < 1.0f )
+		{
+			DrawTexture(pRect,pStyle.mTexture,pStyle.mBackground);
+		}
+		else
+		{
 
-		const int numPoints = mWorkBuffers.vertices.Used();
-		const VertXY* points = mWorkBuffers.vertices.Data();
+		}
+	}
+	else if( pStyle.mBackground != COLOUR_NONE )
+	{
+		if( pStyle.mRadius )
+		{
+			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
 
-        EnableShader(mShaders.ColourOnly2D);
-        mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			const int numPoints = mWorkBuffers.vertices.Used();
+			const VertXY* points = mWorkBuffers.vertices.Data();
 
-        VertexPtr(2,GL_FLOAT,points);
-        glDrawArrays(GL_TRIANGLE_FAN,0,numPoints);
-        CHECK_OGL_ERRORS();
+			EnableShader(mShaders.ColourOnly2D);
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 
-        // Now see if we need to draw a boarder.
-        if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
-        {
-            mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
-            if( pStyle.mBorderSize == 1 )
-            {
-                glDrawArrays(GL_LINE_LOOP,0,numPoints);
-                CHECK_OGL_ERRORS();
-            }
-            else
-            {
+			VertexPtr(2,GL_FLOAT,points);
+			glDrawArrays(GL_TRIANGLE_FAN,0,numPoints);
+			CHECK_OGL_ERRORS();
+		}
+		else
+		{
+			float quad[8];    
+			pRect.GetQuad(quad);
+
+			EnableShader(mShaders.ColourOnly2D);
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			VertexPtr(2,GL_FLOAT,quad);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
+			CHECK_OGL_ERRORS();
+		}
+	}
+
+	// Now see if we need to draw a boarder.
+	if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
+	{
+		if( pStyle.mRadius )
+		{
+			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+
+			const int numPoints = mWorkBuffers.vertices.Used();
+			const VertXY* points = mWorkBuffers.vertices.Data();
+
+			EnableShader(mShaders.ColourOnly2D);
+			VertexPtr(2,GL_FLOAT,points);
+			
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+			if( pStyle.mBorderSize == 1 )
+			{
+				glDrawArrays(GL_LINE_LOOP,0,numPoints);
+				CHECK_OGL_ERRORS();
+			}
+			else
+			{
 				const float shrinkX = ((float)pRect.GetWidth() - pStyle.mBorderSize) / pRect.GetWidth();
 				const float shrinkY = ((float)pRect.GetHeight() - pStyle.mBorderSize) / pRect.GetHeight();
 
@@ -429,35 +472,57 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 
 				CHECK_OGL_ERRORS();
 
-            }
-        }
-    }
-    else
-    {
-        float quad[8];    
-        pRect.GetQuad(quad);
+			}
+		}
+		else
+		{
+			float quad[8];    
+			pRect.GetQuad(quad);
 
-        EnableShader(mShaders.ColourOnly2D);
-        mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
-        VertexPtr(2,GL_FLOAT,quad);
-        glDrawArrays(GL_TRIANGLE_FAN,0,4);
-        CHECK_OGL_ERRORS();
+			EnableShader(mShaders.ColourOnly2D);
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			VertexPtr(2,GL_FLOAT,quad);
 
-        // Now see if we need to draw a boarder.
-        if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
-        {
-            if( pStyle.mBorderSize == 1 )
-            {
-                mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
-                glDrawArrays(GL_LINE_LOOP,0,4);
-                CHECK_OGL_ERRORS();
-            }
-            else
-            {
+			if( pStyle.mBorderSize == 1 )
+			{
+				mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+				glDrawArrays(GL_LINE_LOOP,0,4);
+				CHECK_OGL_ERRORS();
+			}
+			else
+			{
 
-            }
-        }
-    }
+			}
+		}
+	}
+
+}
+
+void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour)
+{
+	const float uv[8] = {0,0,1,0,1,1,0,1};
+	float quad[8];
+	
+	pRect.GetQuad(quad);
+
+	if( pColour == COLOUR_NONE )
+		pColour = COLOUR_WHITE;
+
+	EnableShader(mShaders.TextureColour2D);
+	mShaders.CurrentShader->SetGlobalColour(pColour);
+	mShaders.CurrentShader->SetTexture(pTexture);
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::TEXCOORD,
+				2,
+				GL_FLOAT,
+				GL_FALSE,
+				0,uv);
+	CHECK_OGL_ERRORS();
+
+	VertexPtr(2,GL_FLOAT,quad);
+	glDrawArrays(GL_TRIANGLE_FAN,0,4);
+	CHECK_OGL_ERRORS();	
 }
 
 void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth)
@@ -534,6 +599,172 @@ void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour p
 	}
 }
 
+uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
+{
+    if( mPNG->loader.LoadFromFile(pFilename) )
+    {
+		if( mPNG->loader.GetHasAlpha() )
+        {
+            mPNG->loader.GetRGBA(mPNG->pixelBuffer);
+            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered);
+        }
+        else
+        {
+            mPNG->loader.GetRGB(mPNG->pixelBuffer);
+            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered);
+        }
+    }
+
+	return TextureGetDiagnostics();
+}
+
+uint32_t Graphics::TextureCreate(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered,bool pGenerateMipmaps)
+{
+	const GLint format = TextureFormatToGLFormat(pFormat);
+	if( format == GL_INVALID_ENUM )
+	{
+		THROW_MEANINGFUL_EXCEPTION("TextureCreate passed an unknown texture format, I can not continue.");
+	}
+
+	GLuint newTexture;
+	glGenTextures(1,&newTexture);
+	CHECK_OGL_ERRORS();
+	if( newTexture == 0 )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Failed to create texture, glGenTextures returned zero");
+	}
+
+	if( mTextures.find(newTexture) != mTextures.end() )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Bug found in GLES code, glGenTextures returned an index that we already know about.");
+	}
+
+	mTextures[newTexture] = std::make_unique<GLTexture>(pFormat,pWidth,pHeight);
+
+	glBindTexture(GL_TEXTURE_2D,newTexture);
+	CHECK_OGL_ERRORS();
+
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		format,
+		pWidth,
+		pHeight,
+		0,
+		format,
+		GL_UNSIGNED_BYTE,
+		pPixels);
+
+	CHECK_OGL_ERRORS();
+
+	// Unlike GLES 1.1 this is called after texture creation, in GLES 1.1 you say that you want glTexImage2D to make the mips.
+	// Don't call if we don't yet have pixels. Will be called when you fill the texture.
+	if( pPixels != nullptr )
+	{
+		if( pGenerateMipmaps )
+		{
+			glGenerateMipmap(GL_TEXTURE_2D);
+			CHECK_OGL_ERRORS();
+			if( pFiltered )
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			}
+		}
+		else
+		{
+			if( pFiltered )
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			}
+			else
+			{
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			}
+		}
+	}
+
+	// If it's alpha only we need to set the texture swizzle for RGB to one.
+	// Leaving in for when I add GLES 3.0 support. But for now, grump, need two textures.
+	// GL_TEXTURE_SWIZZLE_R not supported in GLES 2.0
+	/*
+	if( format == GL_ALPHA )
+	{
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_R,GL_ONE);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_G,GL_ONE);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_B,GL_ONE);
+	}
+	*/
+
+	CHECK_OGL_ERRORS();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glBindTexture(GL_TEXTURE_2D,0);//Because we had to change it to setup the texture! Stupid GL!
+	CHECK_OGL_ERRORS();
+
+	VERBOSE_MESSAGE("Texture " << newTexture << " created, " << pWidth << "x" << pHeight << " Format = " << TextureFormatToString(pFormat) << " Mipmaps = " << (pGenerateMipmaps?"true":"false") << " Filtered = " << (pFiltered?"true":"false"));
+
+
+	return newTexture;
+}
+
+void Graphics::TextureFill(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pGenerateMips)
+{
+	glBindTexture(GL_TEXTURE_2D,pTexture);
+
+	const GLint format = TextureFormatToGLFormat(pFormat);
+	if( format == GL_INVALID_ENUM )
+	{
+		THROW_MEANINGFUL_EXCEPTION("TextureFill passed an unknown texture format, I can not continue.");
+	}
+
+	glTexSubImage2D(GL_TEXTURE_2D,
+		0,
+		pX,pY,
+		pWidth,pHeight,
+		format,GL_UNSIGNED_BYTE,
+		pPixels);
+
+	if( pGenerateMips )
+	{
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+
+	glBindTexture(GL_TEXTURE_2D,0);//Because we had to change it to setup the texture! Stupid GL!
+}
+
+void Graphics::TextureDelete(uint32_t pTexture)
+{
+	if( pTexture == mDiagnostics.texture )
+	{
+		THROW_MEANINGFUL_EXCEPTION("An attempt was made to delete the debug texture, do not do this!");
+	}
+
+	if( mTextures.find(pTexture) != mTextures.end() )
+	{
+		glDeleteTextures(1,(GLuint*)&pTexture);
+		mTextures.erase(pTexture);
+	}
+}
+
+int Graphics::TextureGetWidth(uint32_t pTexture)const
+{
+	return mTextures.at(pTexture)->mWidth;
+}
+
+int Graphics::TextureGetHeight(uint32_t pTexture)const
+{
+	return mTextures.at(pTexture)->mHeight;
+}
+
 void Graphics::SetRenderingDefaults()
 {
 	glViewport(0, 0, (GLsizei)mPhysical.Width, (GLsizei)mPhysical.Height);
@@ -590,7 +821,7 @@ void Graphics::BuildDebugTexture()
 	pixels[(16*4*8) + (14*4) + 1] = 0x0;
 	pixels[(16*4*8) + (14*4) + 2] = 0xff;
 
-	mDiagnostics.texture = CreateTexture(16,16,pixels,TextureFormat::FORMAT_RGBA);
+	mDiagnostics.texture = TextureCreate(16,16,pixels,TextureFormat::FORMAT_RGBA);
 }
 
 void Graphics::InitFreeTypeFont()
@@ -895,153 +1126,6 @@ void Graphics::VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer)
 				0,pPointer);
 	CHECK_OGL_ERRORS();
 
-}
-
-uint32_t Graphics::CreateTexture(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered,bool pGenerateMipmaps)
-{
-	const GLint format = TextureFormatToGLFormat(pFormat);
-	if( format == GL_INVALID_ENUM )
-	{
-		THROW_MEANINGFUL_EXCEPTION("CreateTexture passed an unknown texture format, I can not continue.");
-	}
-
-	GLuint newTexture;
-	glGenTextures(1,&newTexture);
-	CHECK_OGL_ERRORS();
-	if( newTexture == 0 )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Failed to create texture, glGenTextures returned zero");
-	}
-
-	if( mTextures.find(newTexture) != mTextures.end() )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Bug found in GLES code, glGenTextures returned an index that we already know about.");
-	}
-
-	mTextures[newTexture] = std::make_unique<GLTexture>(pFormat,pWidth,pHeight);
-
-	glBindTexture(GL_TEXTURE_2D,newTexture);
-	CHECK_OGL_ERRORS();
-
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		format,
-		pWidth,
-		pHeight,
-		0,
-		format,
-		GL_UNSIGNED_BYTE,
-		pPixels);
-
-	CHECK_OGL_ERRORS();
-
-	// Unlike GLES 1.1 this is called after texture creation, in GLES 1.1 you say that you want glTexImage2D to make the mips.
-	// Don't call if we don't yet have pixels. Will be called when you fill the texture.
-	if( pPixels != nullptr )
-	{
-		if( pGenerateMipmaps )
-		{
-			glGenerateMipmap(GL_TEXTURE_2D);
-			CHECK_OGL_ERRORS();
-			if( pFiltered )
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			}
-			else
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			}
-		}
-		else
-		{
-			if( pFiltered )
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			}
-			else
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			}
-		}
-	}
-
-	// If it's alpha only we need to set the texture swizzle for RGB to one.
-	// Leaving in for when I add GLES 3.0 support. But for now, grump, need two textures.
-	// GL_TEXTURE_SWIZZLE_R not supported in GLES 2.0
-	/*
-	if( format == GL_ALPHA )
-	{
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_R,GL_ONE);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_G,GL_ONE);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_SWIZZLE_B,GL_ONE);
-	}
-	*/
-
-	CHECK_OGL_ERRORS();
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	glBindTexture(GL_TEXTURE_2D,0);//Because we had to change it to setup the texture! Stupid GL!
-	CHECK_OGL_ERRORS();
-
-	VERBOSE_MESSAGE("Texture " << newTexture << " created, " << pWidth << "x" << pHeight << " Format = " << TextureFormatToString(pFormat) << " Mipmaps = " << (pGenerateMipmaps?"true":"false") << " Filtered = " << (pFiltered?"true":"false"));
-
-
-	return newTexture;
-}
-
-void Graphics::FillTexture(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pGenerateMips)
-{
-	glBindTexture(GL_TEXTURE_2D,pTexture);
-
-	const GLint format = TextureFormatToGLFormat(pFormat);
-	if( format == GL_INVALID_ENUM )
-	{
-		THROW_MEANINGFUL_EXCEPTION("FillTexture passed an unknown texture format, I can not continue.");
-	}
-
-	glTexSubImage2D(GL_TEXTURE_2D,
-		0,
-		pX,pY,
-		pWidth,pHeight,
-		format,GL_UNSIGNED_BYTE,
-		pPixels);
-
-	if( pGenerateMips )
-	{
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-
-	glBindTexture(GL_TEXTURE_2D,0);//Because we had to change it to setup the texture! Stupid GL!
-}
-
-void Graphics::DeleteTexture(uint32_t pTexture)
-{
-	if( pTexture == mDiagnostics.texture )
-	{
-		THROW_MEANINGFUL_EXCEPTION("An attempt was made to delete the debug texture, do not do this!");
-	}
-
-	if( mTextures.find(pTexture) != mTextures.end() )
-	{
-		glDeleteTextures(1,(GLuint*)&pTexture);
-		mTextures.erase(pTexture);
-	}
-}
-
-int Graphics::GetTextureWidth(uint32_t pTexture)const
-{
-	return mTextures.at(pTexture)->mWidth;
-}
-
-int Graphics::GetTextureHeight(uint32_t pTexture)const
-{
-	return mTextures.at(pTexture)->mHeight;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    

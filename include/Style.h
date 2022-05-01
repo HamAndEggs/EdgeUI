@@ -17,6 +17,7 @@ struct Style
     float mBorderSize = 0;                  //!< if boarder is rendered, will be the width in pixels.
     float mGradientDirection = 0;           //!< The gradients direction in degrees, 0 is top to bottom, 90 is right to left, 180 is bottom to top. Goes clockwise.
     Alignment mAlignment = ALIGN_LEFT_TOP;  //!< How to position content in the content rect. For content scaled to the size of the content this will not have an effect.
+    uint32_t mTexture = 0;                  //!< If set, will be scaled to fit content rect. If mBackground colour is set, will be modulated against that.
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

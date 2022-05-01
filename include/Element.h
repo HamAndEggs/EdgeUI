@@ -40,6 +40,7 @@ public:
 
     const std::string GetID()const{return mID;}
     const Element* GetParent()const{return mParent;}
+
     int GetFont()const;
 
     /**
@@ -55,6 +56,8 @@ public:
 
     bool GetIsVisible()const{return mVisible;}
     bool GetIsActive()const{return mActive;}
+
+    Element* GetChildByID(const std::string_view& pID);
 
     /**
      * @brief Set the position based on fraction of the width of the parent and relitive to it's x.

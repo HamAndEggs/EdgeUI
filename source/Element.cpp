@@ -67,6 +67,21 @@ int Element::GetFont()const
     return 0;
 }
 
+Element* Element::GetChildByID(const std::string_view& pID)
+{
+    // First look for it in my children, if not, then ask them to look for it.
+    for( auto child : mChildren )
+    {
+        if( child->GetID() == pID )
+            return child;
+
+        Element* found = child->GetChildByID(pID);
+        if( found )
+            return found;
+    }
+    return nullptr;
+}
+
 void Element::SetLeftTop(const Point& pPos)
 {
     mRect.left = pPos.x;
@@ -133,11 +148,8 @@ void Element::Draw(Graphics* pGraphics)
     if( mVisible )
     {
         const Rectangle contentRect = GetContentRectangle();
-        
-        if( mStyle.mBackground != COLOUR_NONE )
-        {
-            pGraphics->DrawRectangle(contentRect,mStyle);
-        }
+
+        pGraphics->DrawRectangle(contentRect,mStyle);
 
         if( mText.size() > 0 )
         {
