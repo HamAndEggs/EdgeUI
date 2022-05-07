@@ -166,19 +166,24 @@ struct VertXY
 	};
 };
 
-constexpr float GetPI()
+inline constexpr float GetPI()
 {
 	return std::acos(-1);
 }
 
-constexpr float GetRadian()
+inline constexpr float GetRadian()
 {
 	return 2.0f * GetPI();
 }
 
-constexpr float DegreeToRadian(float pDegree)
+inline constexpr float DegreeToRadian(float pDegree)
 {
 	return pDegree * (GetPI()/180.0f);
+}
+
+inline float Lerp(float pFrom,float pTo,float pLerp)
+{
+	return (pFrom * (1.0f - pLerp)) + (pTo * pLerp);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

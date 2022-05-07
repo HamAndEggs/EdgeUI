@@ -72,10 +72,12 @@ public:
 
     int32_t GetDisplayHeight()const;
 
+	bool GetIsPortate(){return mCreateFlags == ROTATE_FRAME_BUFFER_90 || mCreateFlags == ROTATE_FRAME_BUFFER_270;}
+
     /**
      * @brief Builds a set of points that can be used for drawing a rounded rectangle with lines or polygons.
      */
-    void GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius);
+    void GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,int pOffset = 0,int pStride = 1);
 
 	/**
 	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
@@ -161,7 +163,7 @@ public:
 
 protected:
     bool mExitRequest = false;
-	uint32_t mCreateFlags;
+	uint32_t mCreateFlags = ROTATE_FRAME_BUFFER_0;
 	bool mKeepGoing = true;								//!< Set to false by the application requesting to exit or the user doing ctrl + c.
 
 	// mPhysical is the atchal width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
@@ -212,6 +214,13 @@ protected:
 		float transform[4][4];
 	}mMatrices;
 
+	struct RoundedRectData
+	{
+		static const int NUM_POINTS_PER_CORNER = 31;
+		static const int NUM_QUADRANTS = 4;
+		VertXY Verts[NUM_QUADRANTS][NUM_POINTS_PER_CORNER];
+	}mRoundedRect;// Some precalculated data used to build the rounded rect.
+
 	uint32_t mNextFontID = 1;
 	int mMaximumAllowedGlyph = 128;
 	std::map<uint32_t,std::unique_ptr<FreeTypeFont>> mFreeTypeFonts;
@@ -225,6 +234,7 @@ protected:
 
 	void BuildDebugTexture();
 	void InitFreeTypeFont();
+	void InitRoundedRect();
 
 	/**
 	 * @brief Set the Projection for 2D rendering.

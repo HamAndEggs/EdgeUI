@@ -16,6 +16,10 @@ static Graphics* theGraphics = nullptr;
 
 struct PNG_LOADER
 {
+	PNG_LOADER():loader(true)
+	{
+
+	}
 	tinypng::Loader loader;
 	std::vector<uint8_t> pixelBuffer;
 };
@@ -52,25 +56,26 @@ Graphics::Graphics(DisplayRotation pDisplayRotation)
 	mPhysical.Width = mPlatform->GetWidth();
 	mPhysical.Height = mPlatform->GetHeight();
 
-	if( mCreateFlags&ROTATE_FRAME_PORTRATE )
+	// They want portait, if hardware display is landscape, rotate 90, else don't.
+	if( pDisplayRotation = ROTATE_FRAME_PORTRATE )
 	{
-		mCreateFlags &= ~ROTATE_FRAME_PORTRATE;
+		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portate by default.
 		if( mPhysical.Width > mPhysical.Height )
 		{
-			mCreateFlags |= ROTATE_FRAME_BUFFER_90;
+			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is landscape
 		}
 	}
 
-	if( mCreateFlags&ROTATE_FRAME_LANDSCAPE )
+	if( pDisplayRotation = ROTATE_FRAME_LANDSCAPE )
 	{
-		mCreateFlags &= ~ROTATE_FRAME_LANDSCAPE;
+		mCreateFlags = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
 		if( mPhysical.Width < mPhysical.Height )
 		{
-			mCreateFlags |= ROTATE_FRAME_BUFFER_90;
+			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is portrait
 		}
 	}
 
-	if( mCreateFlags&(ROTATE_FRAME_BUFFER_90|ROTATE_FRAME_BUFFER_270) )
+	if( GetIsPortate() )
 	{
 		mReported.Width = mPhysical.Height;
 		mReported.Height = mPhysical.Width;
@@ -89,6 +94,7 @@ Graphics::Graphics(DisplayRotation pDisplayRotation)
 	BuildShaders();
 	BuildDebugTexture();
 	InitFreeTypeFont();
+	InitRoundedRect();
 
 	VERBOSE_MESSAGE("GLES Ready");
 }
@@ -159,77 +165,35 @@ int32_t Graphics::GetDisplayHeight()const
     return mPlatform->GetHeight();
 }
 
-
-void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius)
+void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,int pOffset,int pStride)
 {
-	const int radius = (int)(std::min(std::min(pRect.GetHeight()/2,pRect.GetWidth()/2),pRadius));
-    // This uses the Midpoint circle algorithm.
-    // Did try with basic float trig and sin / cos but it caused issues with the curces at each corner not being the same.
-    int x = radius;
-    int y = 0;
-    int dx = 1;
-    int dy = 1;
-    int err = dx - (radius / 2.0f );
+	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS);
+	verts += pOffset;
 
-    // Little buffer for the segment that we calculate, it's 1/8th of the circle.
-    int vx[radius];
-    int vy[radius];
+	const float size = std::min(pRect.GetWidth()*pRadius,pRect.GetHeight()*pRadius);
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts += pStride )
+	{
+		verts->x = pRect.right - (mRoundedRect.Verts[0][n].x * size);
+		verts->y = pRect.top +   (mRoundedRect.Verts[0][n].y * size);
+	}
 
-    int vNum = 0;
-    while (x >= y)
-    {
-        vx[vNum] = x;
-        vy[vNum] = y;
-        vNum++;
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	{
+		verts->x = pRect.right -  (mRoundedRect.Verts[1][n].x * size);
+		verts->y = pRect.bottom - (mRoundedRect.Verts[1][n].y * size);
+	}
 
-        if (err <= 0)
-        {
-            y++;
-            err += dy;
-            dy += 2;
-        }
-        if (err > 0)
-        {
-            x--;
-            dx += 2;
-            err += (-radius << 1) + dx;
-        }
-    }
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	{
+		verts->x = pRect.left +   (mRoundedRect.Verts[2][n].x * size);
+		verts->y = pRect.bottom - (mRoundedRect.Verts[2][n].y * size);
+	}
 
-    int top = pRect.top + radius;
-    int left = pRect.left + radius;
-    int right = pRect.right - radius;
-    int bottom = pRect.bottom - radius;
-
-    // Now build circle.
-    VertXY* verts = rBuffer.Restart(vNum*8);
-    for( int n = 0 ; n < vNum ; n++ )
-    {
-        assert( n + (vNum * 7) < (vNum*8) );
-        verts[(vNum * 0) + n].x = right + vx[n];
-        verts[(vNum * 0) + n].y = bottom + vy[n];
-
-        verts[(vNum * 2) - n - 1].x = right + vy[n];
-        verts[(vNum * 2) - n - 1].y = bottom + vx[n];
-
-        verts[(vNum * 2) + n].x = left - vy[n];
-        verts[(vNum * 2) + n].y = bottom + vx[n];
-
-        verts[(vNum * 4) - n - 1].x = left - vx[n];
-        verts[(vNum * 4) - n - 1].y = bottom + vy[n];
-
-        verts[(vNum * 4) + n].x = left - vx[n];
-        verts[(vNum * 4) + n].y = top - vy[n];
-
-        verts[(vNum * 6) - n - 1].x = left - vy[n];
-        verts[(vNum * 6) - n - 1].y = top - vx[n];
-
-        verts[(vNum * 6) + n].x = right + vy[n];
-        verts[(vNum * 6) + n].y = top - vx[n];
-
-        verts[(vNum * 8) - n - 1].x = right + vx[n];
-        verts[(vNum * 8) - n - 1].y = top - vy[n];
-    }
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	{
+		verts->x = pRect.left + (mRoundedRect.Verts[3][n].x * size);
+		verts->y = pRect.top +  (mRoundedRect.Verts[3][n].y * size);
+	}
 }
 
 void Graphics::BeginFrame()
@@ -426,7 +390,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			CHECK_OGL_ERRORS();
 		}
 	}
-
+/*
 	// Now see if we need to draw a boarder.
 	if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
 	{
@@ -494,8 +458,19 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 
 			}
 		}
-	}
+	}*/
 
+	if( false )
+	{
+		float quad[8];    
+		pRect.GetQuad(quad);
+
+		EnableShader(mShaders.ColourOnly2D);
+		mShaders.CurrentShader->SetGlobalColour(MakeColour(255,0,255));
+		VertexPtr(2,GL_FLOAT,quad);
+		glDrawArrays(GL_LINE_LOOP,0,4);
+		CHECK_OGL_ERRORS();
+	}
 }
 
 void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour)
@@ -836,13 +811,46 @@ void Graphics::InitFreeTypeFont()
 	}
 }
 
+void Graphics::InitRoundedRect()
+{
+	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
+	const float AD = GetRadian() / ((float)(mRoundedRect.NUM_POINTS_PER_CORNER-1) * mRoundedRect.NUM_QUADRANTS);
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
+	{
+		mRoundedRect.Verts[0][n].x = 1.0f - sin(A);
+		mRoundedRect.Verts[0][n].y = 1.0f - cos(A);
+	}
+	A -= AD; // Go back to the last point made for making the next quad.
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
+	{
+		mRoundedRect.Verts[1][n].x = 1.0f - sin(A);
+		mRoundedRect.Verts[1][n].y = cos(A) + 1.0f;
+	}
+	A -= AD; // Go back to the last point made for making the next quad.
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
+	{
+		mRoundedRect.Verts[2][n].x = sin(A) + 1.0f;
+		mRoundedRect.Verts[2][n].y = cos(A) + 1.0f;
+	}
+	A -= AD; // Go back to the last point made for making the next quad.
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
+	{
+		mRoundedRect.Verts[3][n].x = sin(A) + 1.0f;
+		mRoundedRect.Verts[3][n].y = 1.0f - cos(A);
+	}
+}
+
 void Graphics::SetProjection2D()
 {
 	// Setup 2D frustum
 	memset(mMatrices.projection,0,sizeof(mMatrices.projection));
 	mMatrices.projection[3][3] = 1;
 
-	if( mCreateFlags&ROTATE_FRAME_BUFFER_90 )
+	if( mCreateFlags == ROTATE_FRAME_BUFFER_90 )
 	{
 		mMatrices.projection[0][1] = -2.0f / (float)mPhysical.Height;
 		mMatrices.projection[1][0] = -2.0f / (float)mPhysical.Width;
@@ -850,7 +858,7 @@ void Graphics::SetProjection2D()
 		mMatrices.projection[3][0] = 1;
 		mMatrices.projection[3][1] = 1;
 	}
-	else if( mCreateFlags&ROTATE_FRAME_BUFFER_180 )
+	else if( mCreateFlags == ROTATE_FRAME_BUFFER_180 )
 	{
 		mMatrices.projection[0][0] = -2.0f / (float)mPhysical.Width;
 		mMatrices.projection[1][1] = 2.0f / (float)mPhysical.Height;
@@ -858,7 +866,7 @@ void Graphics::SetProjection2D()
 		mMatrices.projection[3][0] = 1;
 		mMatrices.projection[3][1] = -1;
 	}
-	else if( mCreateFlags&ROTATE_FRAME_BUFFER_270 )
+	else if( mCreateFlags == ROTATE_FRAME_BUFFER_270 )
 	{
 		mMatrices.projection[0][1] = 2.0f / (float)mPhysical.Height;
 		mMatrices.projection[1][0] = 2.0f / (float)mPhysical.Width;
@@ -866,7 +874,7 @@ void Graphics::SetProjection2D()
 		mMatrices.projection[3][0] = -1;
 		mMatrices.projection[3][1] = -1;
 	}
-	else
+	else// what ever the HW is with no rotation.
 	{
 		mMatrices.projection[0][0] = 2.0f / (float)mPhysical.Width;
 		mMatrices.projection[1][1] = -2.0f / (float)mPhysical.Height;

@@ -3,55 +3,34 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-LayoutGrid* LayoutGrid::Create(uint32_t pColumns, uint32_t pRows)
+LayoutGrid* LayoutGrid::Create(uint32_t pWidth, uint32_t pHeight)
 {
-    LayoutGrid* layout = new LayoutGrid(pColumns,pRows);
+    LayoutGrid* layout = new LayoutGrid(pWidth,pHeight);
     return layout;
 }
 
-LayoutGrid* LayoutGrid::Create(eui::Element* pParent,uint32_t pColumns, uint32_t pRows)
+LayoutGrid* LayoutGrid::Create(eui::Element* pParent,uint32_t pWidth, uint32_t pHeight)
 {
-    LayoutGrid* layout = Create(pColumns,pRows);
+    LayoutGrid* layout = Create(pWidth,pHeight);
     pParent->Attach(layout);
 
     return layout;
 }
 
-LayoutGrid::LayoutGrid(uint32_t pColumns, uint32_t pRows):
-    Element(),
-    mColumns(pColumns),
-    mRows(pRows)
+LayoutGrid::LayoutGrid(uint32_t pWidth, uint32_t pHeight):
+    Element()
 {
-    assert( pColumns > 0 );
-    assert( pRows > 0 );
+    assert( pWidth > 0 );
+    assert( pHeight > 0 );
+
+    // Pre allocate the 2D array
+    mCells.resize(pWidth);
+    for( auto& c : mCells )
+    {
+        c.resize(pHeight);
+    }
 
     SET_DEFAULT_ID();
-    const float cellWidth = 1.0f / mColumns;
-    const float cellHeight = 1.0f / mRows;
-
-    int n = 0;
-    for(int c = 0 ; c < mColumns ; c++ )
-    {
-        std::vector<Element*> column;
-        for(int r = 0 ; r < mRows ; r++ )
-        {
-            Element* e = Element::Create();
-            e->SetLeftTop(cellWidth * c,cellHeight * r);
-            e->SetRightBottom(cellWidth * (c+1),cellHeight * (r+1));
-            Attach(e);
-/*            if( (r+c)&1 == 1 )
-            {
-                e->SetBackground(COLOUR_GREEN);
-            }
-            else
-            {
-                e->SetBackground(COLOUR_BLUE);
-            }*/
-            e->SetID(std::to_string(n) );n++;
-            column.emplace_back(e);
-        }
-        mCells.emplace_back(column);
-    }
 }
 
 LayoutGrid::~LayoutGrid()
@@ -59,21 +38,18 @@ LayoutGrid::~LayoutGrid()
 
 }
 
-void LayoutGrid::ReplaceCell(uint32_t pColumn, uint32_t pRow, Element* pNewCell)
+void LayoutGrid::Attach(uint32_t pX, uint32_t pY, Element* pNewCell)
 {
-    if( mCells[pColumn][pRow] )
+    if( mCells[pX][pY] )
     {
-        Remove(mCells[pColumn][pRow]);
-        delete mCells[pColumn][pRow];
+        mCells[pX][pY]->Attach(pNewCell);
+        return;
     }
-    Attach(pNewCell);
+    Element::Attach(pNewCell);
 
-    const float cellWidth = 1.0f / mColumns;
-    const float cellHeight = 1.0f / mRows;
-
-    pNewCell->SetLeftTop(cellWidth * pRow,cellHeight * pColumn);
-    pNewCell->SetRightBottom(cellWidth * (pRow+1),cellHeight * (pColumn+1));
-    mCells[pColumn][pRow] = pNewCell;
+    pNewCell->SetLeftTop(GetCellFractionalWidth() * pX,GetCellFractionalHeight() * pY);
+    pNewCell->SetRightBottom(GetCellFractionalWidth() * (pX+1),GetCellFractionalHeight() * (pY+1));
+    mCells[pX][pY] = pNewCell;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
