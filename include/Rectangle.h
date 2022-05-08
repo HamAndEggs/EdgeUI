@@ -59,6 +59,20 @@ struct Rectangle
     }
 
     /**
+     * @brief Get the Scaled rect, 1 == orginal size, 0 == zero point at the center of orginal.
+     */
+    Rectangle GetScaled(float pScale)const
+    {
+        const float scale = pScale*0.5f;// Make it work for our lerp.
+        return Rectangle(
+            GetX(0.5f - scale),
+            GetY(0.5f - scale),
+            GetX(0.5f + scale),
+            GetY(0.5f + scale)
+            );
+    }
+
+    /**
      * @brief Enlarges the rect so that the point is contained
      */
     void AddPoint(float pX,float pY)

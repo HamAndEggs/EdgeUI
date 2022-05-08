@@ -165,35 +165,78 @@ int32_t Graphics::GetDisplayHeight()const
     return mPlatform->GetHeight();
 }
 
-void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,int pOffset,int pStride)
+void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius)
 {
 	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS);
-	verts += pOffset;
 
 	const float size = std::min(pRect.GetWidth()*pRadius,pRect.GetHeight()*pRadius);
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts += pStride )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts++ )
 	{
 		verts->x = pRect.right - (mRoundedRect.Verts[0][n].x * size);
 		verts->y = pRect.top +   (mRoundedRect.Verts[0][n].y * size);
 	}
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
 	{
 		verts->x = pRect.right -  (mRoundedRect.Verts[1][n].x * size);
 		verts->y = pRect.bottom - (mRoundedRect.Verts[1][n].y * size);
 	}
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
 	{
 		verts->x = pRect.left +   (mRoundedRect.Verts[2][n].x * size);
 		verts->y = pRect.bottom - (mRoundedRect.Verts[2][n].y * size);
 	}
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += pStride )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
 	{
 		verts->x = pRect.left + (mRoundedRect.Verts[3][n].x * size);
 		verts->y = pRect.top +  (mRoundedRect.Verts[3][n].y * size);
 	}
+}
+
+void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pOuterRect,const Rectangle& pInnerRect,VertXY::Buffer& rBuffer,float pRadius)
+{
+	VertXY* verts = rBuffer.Restart( (mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS * 2) + 2);
+	VertXY* first = verts;
+
+	const float outerSize = std::min(pOuterRect.GetWidth()*pRadius,pOuterRect.GetHeight()*pRadius);
+	const float innerSize = std::min(pInnerRect.GetWidth()*pRadius,pInnerRect.GetHeight()*pRadius);
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts += 2 )
+	{
+		verts[0].x = pInnerRect.right - (mRoundedRect.Verts[0][n].x * innerSize);
+		verts[0].y = pInnerRect.top +   (mRoundedRect.Verts[0][n].y * innerSize);
+		verts[1].x = pOuterRect.right - (mRoundedRect.Verts[0][n].x * outerSize);
+		verts[1].y = pOuterRect.top +   (mRoundedRect.Verts[0][n].y * outerSize);
+	}
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	{
+		verts[0].x = pInnerRect.right -  (mRoundedRect.Verts[1][n].x * innerSize);
+		verts[0].y = pInnerRect.bottom - (mRoundedRect.Verts[1][n].y * innerSize);
+		verts[1].x = pOuterRect.right -  (mRoundedRect.Verts[1][n].x * outerSize);
+		verts[1].y = pOuterRect.bottom - (mRoundedRect.Verts[1][n].y * outerSize);
+	}
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	{
+		verts[0].x = pInnerRect.left +   (mRoundedRect.Verts[2][n].x * innerSize);
+		verts[0].y = pInnerRect.bottom - (mRoundedRect.Verts[2][n].y * innerSize);
+		verts[1].x = pOuterRect.left +   (mRoundedRect.Verts[2][n].x * outerSize);
+		verts[1].y = pOuterRect.bottom - (mRoundedRect.Verts[2][n].y * outerSize);
+	}
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	{
+		verts[0].x = pInnerRect.left + (mRoundedRect.Verts[3][n].x * innerSize);
+		verts[0].y = pInnerRect.top +  (mRoundedRect.Verts[3][n].y * innerSize);
+		verts[1].x = pOuterRect.left + (mRoundedRect.Verts[3][n].x * outerSize);
+		verts[1].y = pOuterRect.top +  (mRoundedRect.Verts[3][n].y * outerSize);
+	}
+
+	verts[0] = first[0];
+	verts[1] = first[1];
 }
 
 void Graphics::BeginFrame()
@@ -390,53 +433,33 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			CHECK_OGL_ERRORS();
 		}
 	}
-/*
+
 	// Now see if we need to draw a boarder.
 	if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
 	{
 		if( pStyle.mRadius )
-		{
-			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+		{			
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+			GLenum primType = GL_LINE_LOOP;
+			if( pStyle.mBorderSize == 1 )
+			{
+				GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+			}
+			else
+			{
+				const Rectangle inner = pRect.GetShrunk(pStyle.mBorderSize,pStyle.mBorderSize);
+				GetRoundedRectangleBoarderPoints(pRect,inner,mWorkBuffers.vertices,pStyle.mRadius);
+				primType = GL_TRIANGLE_STRIP;
+			}
 
 			const int numPoints = mWorkBuffers.vertices.Used();
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
 			EnableShader(mShaders.ColourOnly2D);
 			VertexPtr(2,GL_FLOAT,points);
-			
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
-			if( pStyle.mBorderSize == 1 )
-			{
-				glDrawArrays(GL_LINE_LOOP,0,numPoints);
-				CHECK_OGL_ERRORS();
-			}
-			else
-			{
-				const float shrinkX = ((float)pRect.GetWidth() - pStyle.mBorderSize) / pRect.GetWidth();
-				const float shrinkY = ((float)pRect.GetHeight() - pStyle.mBorderSize) / pRect.GetHeight();
+			glDrawArrays(primType,0,numPoints);
+			CHECK_OGL_ERRORS();
 
-				auto MakeBorder = [shrinkX,shrinkY,pRect](VertXY* rDest,const VertXY& pSource)
-				{
-					rDest[1].x = pSource.x;
-					rDest[1].y = pSource.y;
-					rDest[0].x = ((pSource.x - pRect.GetCenterX()) * shrinkX) + pRect.GetCenterX();
-					rDest[0].y = ((pSource.y - pRect.GetCenterY()) * shrinkY) + pRect.GetCenterY();
-				};
-
-				VertXY* border = (VertXY*)mWorkBuffers.scratchRam.Restart(sizeof(VertXY) * (numPoints+1) * 2);
-				for(int n = 0 ; n < numPoints ; n++ )
-				{
-					MakeBorder(border,points[n]);
-					border += 2;
-				}
-				MakeBorder(border,points[0]);
-
-				VertexPtr(2,GL_FLOAT,mWorkBuffers.scratchRam.Data());
-				glDrawArrays(GL_TRIANGLE_STRIP,0,(numPoints+1)*2);
-
-				CHECK_OGL_ERRORS();
-
-			}
 		}
 		else
 		{
@@ -458,7 +481,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 
 			}
 		}
-	}*/
+	}
 
 	if( false )
 	{

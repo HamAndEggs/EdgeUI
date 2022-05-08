@@ -77,7 +77,12 @@ public:
     /**
      * @brief Builds a set of points that can be used for drawing a rounded rectangle with lines or polygons.
      */
-    void GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,int pOffset = 0,int pStride = 1);
+    void GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius);
+
+    /**
+     * @brief Builds a set of points that can be used for drawing a boarder around a rounded rectangle.
+     */
+    void GetRoundedRectangleBoarderPoints(const Rectangle& pOuterRect,const Rectangle& pInnerRect,VertXY::Buffer& rBuffer,float pRadius);
 
 	/**
 	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
