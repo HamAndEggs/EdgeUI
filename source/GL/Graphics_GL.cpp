@@ -169,70 +169,134 @@ void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& 
 {
 	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS);
 
+	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
+	const float AD = mRoundedRect.ANGLE_INC;
+
 	const float size = std::min(pRect.GetWidth()*pRadius,pRect.GetHeight()*pRadius);
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts++ )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts++, A += AD )
 	{
-		verts->x = pRect.right - (mRoundedRect.Verts[0][n].x * size);
-		verts->y = pRect.top +   (mRoundedRect.Verts[0][n].y * size);
-	}
+		const float sA = sin(A);
+		const float cA = cos(A);
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
-	{
-		verts->x = pRect.right -  (mRoundedRect.Verts[1][n].x * size);
-		verts->y = pRect.bottom - (mRoundedRect.Verts[1][n].y * size);
-	}
+		const float x = (1.0f - sA) * size;
+		const float y = (1.0f - cA) * size;
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
-	{
-		verts->x = pRect.left +   (mRoundedRect.Verts[2][n].x * size);
-		verts->y = pRect.bottom - (mRoundedRect.Verts[2][n].y * size);
+		verts->x = pRect.right - x;
+		verts->y = pRect.top +   y;
 	}
+	A -= AD;
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++ )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++, A += AD )
 	{
-		verts->x = pRect.left + (mRoundedRect.Verts[3][n].x * size);
-		verts->y = pRect.top +  (mRoundedRect.Verts[3][n].y * size);
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (1.0f - sA) * size;
+		const float y = (cA + 1.0f) * size;
+
+		verts->x = pRect.right -  x;
+		verts->y = pRect.bottom - y;
+	}
+	A -= AD;
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++, A += AD )
+	{
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (sA + 1.0f) * size;
+		const float y = (cA + 1.0f) * size;
+
+		verts->x = pRect.left +   x;
+		verts->y = pRect.bottom - y;
+	}
+	A -= AD;
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts++, A += AD )
+	{
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (sA + 1.0f) * size;
+		const float y = (1.0f - cA) * size;
+
+		verts->x = pRect.left + x;
+		verts->y = pRect.top +  y;
 	}
 }
 
-void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pOuterRect,const Rectangle& pInnerRect,VertXY::Buffer& rBuffer,float pRadius)
+void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,float pThickness)
 {
 	VertXY* verts = rBuffer.Restart( (mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS * 2) + 2);
 	VertXY* first = verts;
 
-	const float outerSize = std::min(pOuterRect.GetWidth()*pRadius,pOuterRect.GetHeight()*pRadius);
-	const float innerSize = std::min(pInnerRect.GetWidth()*pRadius,pInnerRect.GetHeight()*pRadius);
+	const float outerSize = std::min(pRect.GetWidth()*pRadius,pRect.GetHeight()*pRadius);
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts += 2 )
+	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
+	const float AD = GetRadian() / ((float)(mRoundedRect.NUM_POINTS_PER_CORNER-1) * mRoundedRect.NUM_QUADRANTS);
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts += 2, A += AD )
 	{
-		verts[0].x = pInnerRect.right - (mRoundedRect.Verts[0][n].x * innerSize);
-		verts[0].y = pInnerRect.top +   (mRoundedRect.Verts[0][n].y * innerSize);
-		verts[1].x = pOuterRect.right - (mRoundedRect.Verts[0][n].x * outerSize);
-		verts[1].y = pOuterRect.top +   (mRoundedRect.Verts[0][n].y * outerSize);
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (1.0f - sA) * outerSize;
+		const float y = (1.0f - cA) * outerSize;
+
+		verts[1].x = pRect.right - x;
+		verts[1].y = pRect.top +   y;
+
+		verts[0].x = verts[1].x - (sA * pThickness);
+		verts[0].y = verts[1].y + (cA * pThickness);
 	}
+	A -= AD;
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2, A += AD )
 	{
-		verts[0].x = pInnerRect.right -  (mRoundedRect.Verts[1][n].x * innerSize);
-		verts[0].y = pInnerRect.bottom - (mRoundedRect.Verts[1][n].y * innerSize);
-		verts[1].x = pOuterRect.right -  (mRoundedRect.Verts[1][n].x * outerSize);
-		verts[1].y = pOuterRect.bottom - (mRoundedRect.Verts[1][n].y * outerSize);
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (1.0f - sA) * outerSize;
+		const float y = (cA + 1.0f) * outerSize;
+
+		verts[1].x = pRect.right -  x;
+		verts[1].y = pRect.bottom - y;
+
+		verts[0].x = verts[1].x - (sA * pThickness);
+		verts[0].y = verts[1].y + (cA * pThickness);
+
 	}
+	A -= AD;
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2, A += AD )
 	{
-		verts[0].x = pInnerRect.left +   (mRoundedRect.Verts[2][n].x * innerSize);
-		verts[0].y = pInnerRect.bottom - (mRoundedRect.Verts[2][n].y * innerSize);
-		verts[1].x = pOuterRect.left +   (mRoundedRect.Verts[2][n].x * outerSize);
-		verts[1].y = pOuterRect.bottom - (mRoundedRect.Verts[2][n].y * outerSize);
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (sA + 1.0f) * outerSize;
+		const float y = (cA + 1.0f) * outerSize;
+
+		verts[1].x = pRect.left +   x;
+		verts[1].y = pRect.bottom - y;
+
+		verts[0].x = verts[1].x - (sA * pThickness);
+		verts[0].y = verts[1].y + (cA * pThickness);
 	}
+	A -= AD;
 
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2 )
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ , verts += 2, A += AD )
 	{
-		verts[0].x = pInnerRect.left + (mRoundedRect.Verts[3][n].x * innerSize);
-		verts[0].y = pInnerRect.top +  (mRoundedRect.Verts[3][n].y * innerSize);
-		verts[1].x = pOuterRect.left + (mRoundedRect.Verts[3][n].x * outerSize);
-		verts[1].y = pOuterRect.top +  (mRoundedRect.Verts[3][n].y * outerSize);
+		const float sA = sin(A);
+		const float cA = cos(A);
+
+		const float x = (sA + 1.0f) * outerSize;
+		const float y = (1.0f - cA) * outerSize;
+
+		verts[1].x = pRect.left + x;
+		verts[1].y = pRect.top +  y;
+
+		verts[0].x = verts[1].x - (sA * pThickness);
+		verts[0].y = verts[1].y + (cA * pThickness);
 	}
 
 	verts[0] = first[0];
@@ -447,8 +511,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			}
 			else
 			{
-				const Rectangle inner = pRect.GetShrunk(pStyle.mBorderSize,pStyle.mBorderSize);
-				GetRoundedRectangleBoarderPoints(pRect,inner,mWorkBuffers.vertices,pStyle.mRadius);
+				GetRoundedRectangleBoarderPoints(pRect,mWorkBuffers.vertices,pStyle.mRadius,pStyle.mBorderSize);
 				primType = GL_TRIANGLE_STRIP;
 			}
 
@@ -836,35 +899,6 @@ void Graphics::InitFreeTypeFont()
 
 void Graphics::InitRoundedRect()
 {
-	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
-	const float AD = GetRadian() / ((float)(mRoundedRect.NUM_POINTS_PER_CORNER-1) * mRoundedRect.NUM_QUADRANTS);
-
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
-	{
-		mRoundedRect.Verts[0][n].x = 1.0f - sin(A);
-		mRoundedRect.Verts[0][n].y = 1.0f - cos(A);
-	}
-	A -= AD; // Go back to the last point made for making the next quad.
-
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
-	{
-		mRoundedRect.Verts[1][n].x = 1.0f - sin(A);
-		mRoundedRect.Verts[1][n].y = cos(A) + 1.0f;
-	}
-	A -= AD; // Go back to the last point made for making the next quad.
-
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
-	{
-		mRoundedRect.Verts[2][n].x = sin(A) + 1.0f;
-		mRoundedRect.Verts[2][n].y = cos(A) + 1.0f;
-	}
-	A -= AD; // Go back to the last point made for making the next quad.
-
-	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, A += AD )
-	{
-		mRoundedRect.Verts[3][n].x = sin(A) + 1.0f;
-		mRoundedRect.Verts[3][n].y = 1.0f - cos(A);
-	}
 }
 
 void Graphics::SetProjection2D()

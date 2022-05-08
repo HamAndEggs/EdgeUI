@@ -82,7 +82,7 @@ public:
     /**
      * @brief Builds a set of points that can be used for drawing a boarder around a rounded rectangle.
      */
-    void GetRoundedRectangleBoarderPoints(const Rectangle& pOuterRect,const Rectangle& pInnerRect,VertXY::Buffer& rBuffer,float pRadius);
+    void GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,float pSize);
 
 	/**
 	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
@@ -223,8 +223,8 @@ protected:
 	{
 		static const int NUM_POINTS_PER_CORNER = 31;
 		static const int NUM_QUADRANTS = 4;
-		VertXY Verts[NUM_QUADRANTS][NUM_POINTS_PER_CORNER];
-	}mRoundedRect;// Some precalculated data used to build the rounded rect.
+		const float ANGLE_INC = GetRadian() / ((float)(NUM_POINTS_PER_CORNER-1) * NUM_QUADRANTS);
+	}mRoundedRect;
 
 	uint32_t mNextFontID = 1;
 	int mMaximumAllowedGlyph = 128;
