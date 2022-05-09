@@ -124,6 +124,8 @@ Graphics::~Graphics()
 	mShaders.TextureAlphaOnly2D.reset();
 	mShaders.SpriteShader2D.reset();
 	mShaders.QuadBatchShader2D.reset();
+	mShaders.TexturedRoundedRect2D.reset();
+	
 
 	mShaders.ColourOnly3D.reset();
 	mShaders.TextureOnly3D.reset();
@@ -460,12 +462,24 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 	if( pStyle.mTexture )
 	{
 		// Later this will respect the rounded corners and board of the style.
-		if( pStyle.mRadius < 1.0f )
+		if( pStyle.mRadius <= 0.0f )
 		{
 			DrawTexture(pRect,pStyle.mTexture,pStyle.mBackground);
 		}
 		else
 		{
+			EnableShader(mShaders.TexturedRoundedRect2D);
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			mShaders.CurrentShader->SetTexture(pStyle.mTexture);
+
+			float trans[4] = {-pRect.left,-pRect.top,1.0f / pRect.GetWidth(),1.0f / pRect.GetHeight()};
+			mShaders.CurrentShader->SetTextureTransform(trans);
+
+			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+
+			VertexPtr(2,GL_FLOAT,mWorkBuffers.vertices.Data());
+			glDrawArrays(GL_TRIANGLE_FAN,0,mWorkBuffers.vertices.Used());
+			CHECK_OGL_ERRORS();
 
 		}
 	}
@@ -502,8 +516,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 	if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
 	{
 		if( pStyle.mRadius )
-		{			
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+		{
 			GLenum primType = GL_LINE_LOOP;
 			if( pStyle.mBorderSize == 1 )
 			{
@@ -519,6 +532,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
 			EnableShader(mShaders.ColourOnly2D);
+			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
 			VertexPtr(2,GL_FLOAT,points);
 			glDrawArrays(primType,0,numPoints);
 			CHECK_OGL_ERRORS();
@@ -1110,6 +1124,33 @@ void Graphics::BuildShaders()
 	)";
 
 	mShaders.QuadBatchShader2D = std::make_unique<GLShader>("QuadBatchShader2D",QuadBatchShader2D_VS,QuadBatchShader2D_PS);
+
+	const char* TexturedRoundedRect2D_VS = R"(
+		uniform mat4 u_proj_cam;
+		uniform vec4 u_global_colour;
+		uniform vec4 u_textTrans;
+		attribute vec4 a_xyz;
+		varying vec4 v_col;
+		varying vec2 v_tex0;
+		void main(void)
+		{
+			v_col = u_global_colour;
+			v_tex0 = (a_xyz.xy + u_textTrans.xy) * u_textTrans.zw;
+			gl_Position = u_proj_cam * a_xyz;
+		}
+	)";
+
+	const char *TexturedRoundedRect2D_PS = R"(
+		varying vec4 v_col;
+		varying vec2 v_tex0;
+		uniform sampler2D u_tex0;
+		void main(void)
+		{
+			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
+		}
+	)";
+
+	mShaders.TexturedRoundedRect2D = std::make_unique<GLShader>("TexturedRoundedRect2D",TexturedRoundedRect2D_VS,TexturedRoundedRect2D_PS);
 
 
 	const char* ColourOnly3D_VS = R"(

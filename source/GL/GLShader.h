@@ -30,6 +30,7 @@ struct GLShader
 	void SetGlobalColour(const Colour pColour);
 	void SetGlobalColour(float red,float green,float blue,float alpha);
 	void SetTexture(GLint texture);
+	void SetTextureTransform(float pTransform[4]);
 
 	bool GetUsesTexture()const{return mUniforms.tex0 > -1;}
 	bool GetUsesTransform()const{return mUniforms.trans > -1;}
@@ -48,6 +49,7 @@ struct GLShader
 		GLint proj_cam;
 		GLint global_colour;
 		GLint tex0;
+		GLint textureTrans;
 	}mUniforms;
 
 	int LoadShader(int type, const char* shaderCode);

@@ -71,6 +71,7 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 	mUniforms.trans = GetUniformLocation("u_trans");
 	mUniforms.global_colour = GetUniformLocation("u_global_colour");
 	mUniforms.tex0 = GetUniformLocation("u_tex0");
+	mUniforms.textureTrans = GetUniformLocation("u_textTrans");
 
 
 	glUseProgram(0);
@@ -195,6 +196,12 @@ void GLShader::SetTexture(GLint pTexture)
 	glUniform1i(mUniforms.tex0,0);
 	CHECK_OGL_ERRORS();
 }
+
+void GLShader::SetTextureTransform(float pTransform[4])
+{
+	glUniform4f(mUniforms.textureTrans,pTransform[0],pTransform[1],pTransform[2],pTransform[3]);
+}
+
 
 int GLShader::LoadShader(int type, const char* shaderCode)
 {

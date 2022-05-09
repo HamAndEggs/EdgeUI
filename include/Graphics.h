@@ -206,6 +206,8 @@ protected:
 		GLShaderPtr TextureAlphaOnly2D;
 		GLShaderPtr SpriteShader2D;
 		GLShaderPtr QuadBatchShader2D;
+		GLShaderPtr TexturedRoundedRect2D;	//!< Custom shader for just textured rounded rectangles.
+
 
 		GLShaderPtr ColourOnly3D;
 		GLShaderPtr TextureOnly3D;
