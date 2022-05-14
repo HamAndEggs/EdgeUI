@@ -32,8 +32,8 @@ Element::~Element()
     {
         delete e;
     }
-    delete mEvents;
-    mEvents = nullptr;
+    delete mExtension;
+    mExtension = nullptr;
 }
 
 Rectangle Element::GetContentRectangle()const
@@ -121,6 +121,12 @@ void Element::SetTextF(const char* pFmt,...)
 	SetText(buf);
 }
 
+void Element::SetExtension(ElementExtension* pExtension)
+{
+    delete mExtension;// Kill the old one.
+    mExtension = pExtension;
+}
+
 void Element::Attach(Element* pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
@@ -138,9 +144,9 @@ void Element::Update()
 {
     if( mActive )
     {
-        if( mEvents )
+        if( mExtension )
         {
-            if( mEvents->OnUpdate(this) )
+            if( mExtension->OnUpdate(this) )
                 return;
         }
 
@@ -168,9 +174,9 @@ void Element::Draw(Graphics* pGraphics)
             }
         }
 
-        if( mEvents )
+        if( mExtension )
         {
-            if( mEvents->OnDraw(this,pGraphics) )
+            if( mExtension->OnDraw(this,pGraphics) )
                 return;
         }
 
@@ -189,9 +195,9 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
         if( pTouched )
         {
             // Is it in our rect?
-            if( mEvents )
+            if( mExtension )
             {
-                if( mEvents->OnPressed(this) )
+                if( mExtension->OnPressed(this) )
                 {
                     return true;
                 }

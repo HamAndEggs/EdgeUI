@@ -23,12 +23,12 @@ class Graphics;
  * The event handlers return a bool. Return true to stop the propegation of the event to children.
  * The default code is called before the handler is. So for a graphical element it is drawn before OnDraw is called.
  */
-class ElementEvents
+class ElementExtension
 {
 public:
 
-    ElementEvents() = default;
-    virtual ~ElementEvents() = default;
+    ElementExtension() = default;
+    virtual ~ElementExtension() = default;
 
     virtual bool OnDraw(Element* pElement,Graphics* pGraphics){return false;}
     virtual bool OnUpdate(Element* pElement){return false;}
@@ -99,7 +99,7 @@ public:
     void SetVisible(bool pVisible){mVisible = pVisible;}
     void SetActive(bool pActive){mActive = pActive;}
 
-    void SetEventHandler(ElementEvents* pHandlerClass){mEvents = pHandlerClass;}
+    void SetExtension(ElementExtension* pExtension);
 
     void Attach(Element* pElement);
     void Remove(Element* pElement);
@@ -138,7 +138,7 @@ private:
     Rectangle mRect = {0.0f,0.0f,1.0f,1.0f};    //!< Rect is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
     Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
 
-    ElementEvents* mEvents = nullptr;
+    ElementExtension* mExtension = nullptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
