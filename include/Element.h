@@ -14,7 +14,28 @@ namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
 class Element;
-typedef std::function<bool(Element* pElement)> ElementEvent;
+class Graphics;
+
+/**
+ * @brief This is an interface class used to allow an application to extend the functionality of an element.
+ * When the element that the events object is attached to is deleted so is this object.
+ * Don't share an object with more than one element.
+ * The event handlers return a bool. Return true to stop the propegation of the event to children.
+ * The default code is called before the handler is. So for a graphical element it is drawn before OnDraw is called.
+ */
+class ElementEvents
+{
+public:
+
+    ElementEvents() = default;
+    virtual ~ElementEvents() = default;
+
+    virtual bool OnDraw(Element* pElement,Graphics* pGraphics){return false;}
+    virtual bool OnUpdate(Element* pElement){return false;}
+    virtual bool OnPressed(Element* pElement){return false;}
+    virtual bool OnDrag(Element* pElement){return false;}
+    virtual bool OnKey(Element* pElement){return false;}
+};
 
 /**
  * @brief 
@@ -35,8 +56,8 @@ public:
      * @brief The inner Rectangle that the control uses for it's children and content.
      * @return Rectangle 
      */
-    virtual Rectangle GetContentRectangle()const;
-    virtual Rectangle GetParentRectangle()const;
+    Rectangle GetContentRectangle()const;
+    Rectangle GetParentRectangle()const;
 
     const std::string GetID()const{return mID;}
     const Element* GetParent()const{return mParent;}
@@ -62,36 +83,33 @@ public:
     /**
      * @brief Set the position based on fraction of the width of the parent and relitive to it's x.
      */
-    virtual void SetLeftTop(const Point& pPos);
-    virtual void SetLeftTop(float pX,float pY){SetLeftTop(Point(pX,pY));}
-    virtual void SetRightBottom(const Point& pSize);
-    virtual void SetRightBottom(float pX,float pY){SetRightBottom(Point(pX,pY));}
-    virtual void SetPadding(float pPadding);
+    void SetLeftTop(const Point& pPos);
+    void SetLeftTop(float pX,float pY){SetLeftTop(Point(pX,pY));}
+    void SetRightBottom(const Point& pSize);
+    void SetRightBottom(float pX,float pY){SetRightBottom(Point(pX,pY));}
+    void SetPadding(float pPadding);
+    void SetPadding(const Rectangle& pPadding);
 
-    virtual void SetID(const std::string& pID){mID = pID;}
-    virtual void SetText(const std::string& pText){mText = pText;}
-    virtual void SetTextF(const char* pFmt,...);
-    virtual void SetFont(int pFont){mFont = pFont;}
-    virtual void SetStyle(const Style& pStyle){mStyle = pStyle;}
+    void SetID(const std::string& pID){mID = pID;}
+    void SetText(const std::string& pText){mText = pText;}
+    void SetTextF(const char* pFmt,...);
+    void SetFont(int pFont){mFont = pFont;}
+    void SetStyle(const Style& pStyle){mStyle = pStyle;}
 
-    virtual void SetVisible(bool pVisible){mVisible = pVisible;}
-    virtual void SetActive(bool pActive){mActive = pActive;}
+    void SetVisible(bool pVisible){mVisible = pVisible;}
+    void SetActive(bool pActive){mActive = pActive;}
 
-    virtual void SetOnUpdate(ElementEvent pHandler){mEvents.OnUpdate = pHandler;}
-    virtual void SetOnDraw(ElementEvent pHandler){mEvents.OnDraw = pHandler;}
-    virtual void SetOnPressed(ElementEvent pHandler){mEvents.OnPressed = pHandler;}
-    virtual void SetOnDrag(ElementEvent pHandler){mEvents.OnDrag = pHandler;}
-    virtual void SetOnKey(ElementEvent pHandler){mEvents.OnKey = pHandler;}
+    void SetEventHandler(ElementEvents* pHandlerClass){mEvents = pHandlerClass;}
 
-    virtual void Attach(Element* pElement);
-    virtual void Remove(Element* pElement);
+    void Attach(Element* pElement);
+    void Remove(Element* pElement);
     /**
      * @brief Updates all elements in the tree, if they are visible.
      * Doing full update before the draw allows all dependacies to have the correct data for rendering.
      */
-    virtual void Update();
+    void Update();
 
-    virtual void Draw(Graphics* pGraphics);
+    void Draw(Graphics* pGraphics);
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -99,7 +117,7 @@ public:
      * Could also be used for automated testing with playback of events.
      * Will return true if handled, will call all children until one handles it if it did not handle it.
      */
-    virtual bool TouchEvent(float pX,float pY,bool pTouched);
+    bool TouchEvent(float pX,float pY,bool pTouched);
 
 protected:
     /**
@@ -120,14 +138,7 @@ private:
     Rectangle mRect = {0.0f,0.0f,1.0f,1.0f};    //!< Rect is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
     Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
 
-    struct
-    {
-        ElementEvent OnUpdate = nullptr;
-        ElementEvent OnDraw = nullptr;
-        ElementEvent OnPressed = nullptr;
-        ElementEvent OnDrag = nullptr;
-        ElementEvent OnKey = nullptr;
-    }mEvents;
+    ElementEvents* mEvents = nullptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

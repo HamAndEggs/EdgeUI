@@ -38,7 +38,7 @@ LayoutGrid::~LayoutGrid()
 
 }
 
-void LayoutGrid::Attach(uint32_t pX, uint32_t pY, Element* pNewCell)
+void LayoutGrid::Attach(Element* pNewCell,uint32_t pX, uint32_t pY,uint32_t pSpanX,uint32_t pSpanY)
 {
     if( mCells[pX][pY] )
     {
@@ -48,7 +48,7 @@ void LayoutGrid::Attach(uint32_t pX, uint32_t pY, Element* pNewCell)
     Element::Attach(pNewCell);
 
     pNewCell->SetLeftTop(GetCellFractionalWidth() * pX,GetCellFractionalHeight() * pY);
-    pNewCell->SetRightBottom(GetCellFractionalWidth() * (pX+1),GetCellFractionalHeight() * (pY+1));
+    pNewCell->SetRightBottom(GetCellFractionalWidth() * (pX+pSpanX),GetCellFractionalHeight() * (pY+pSpanY));
     mCells[pX][pY] = pNewCell;
 }
 

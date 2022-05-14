@@ -32,6 +32,8 @@ Element::~Element()
     {
         delete e;
     }
+    delete mEvents;
+    mEvents = nullptr;
 }
 
 Rectangle Element::GetContentRectangle()const
@@ -103,6 +105,11 @@ void Element::SetPadding(float pPadding)
     mPadding.bottom = 1.0f - pPadding;
 }
 
+void Element::SetPadding(const Rectangle& pPadding)
+{
+    mPadding = pPadding;
+}
+
 void Element::SetTextF(const char* pFmt,...)
 {
     assert(pFmt);
@@ -131,9 +138,10 @@ void Element::Update()
 {
     if( mActive )
     {
-        if( mEvents.OnUpdate )
+        if( mEvents )
         {
-            mEvents.OnUpdate(this);
+            if( mEvents->OnUpdate(this) )
+                return;
         }
 
         for( auto e : mChildren )
@@ -160,9 +168,10 @@ void Element::Draw(Graphics* pGraphics)
             }
         }
 
-        if( mEvents.OnDraw )
+        if( mEvents )
         {
-            mEvents.OnDraw(this);
+            if( mEvents->OnDraw(this,pGraphics) )
+                return;
         }
 
         for( auto& e : mChildren )
@@ -180,9 +189,9 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
         if( pTouched )
         {
             // Is it in our rect?
-            if( mEvents.OnPressed )
+            if( mEvents )
             {
-                if( mEvents.OnPressed(this) )
+                if( mEvents->OnPressed(this) )
                 {
                     return true;
                 }

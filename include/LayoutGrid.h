@@ -33,7 +33,7 @@ public:
     /**
      * @brief If the cell has an element, will attach as child, if not set then element will become the root.
      */
-    void Attach(uint32_t pX, uint32_t pY, Element* pNewCell);
+    void Attach(Element* pNewCell,uint32_t pX, uint32_t pY,uint32_t pSpanX = 1,uint32_t pSpanY = 1);
 
 protected:
     LayoutGrid(uint32_t pWidth, uint32_t pHeight);
