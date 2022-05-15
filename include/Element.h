@@ -16,6 +16,8 @@ namespace eui{
 class Element;
 class Graphics;
 
+typedef std::shared_ptr<class Element> ElementPtr;
+
 /**
  * @brief This is an interface class used to allow an application to extend the functionality of an element.
  * When the element that the events object is attached to is deleted so is this object.
@@ -30,22 +32,26 @@ public:
     ElementExtension() = default;
     virtual ~ElementExtension() = default;
 
-    virtual bool OnDraw(Element* pElement,Graphics* pGraphics){return false;}
-    virtual bool OnUpdate(Element* pElement){return false;}
-    virtual bool OnPressed(Element* pElement){return false;}
-    virtual bool OnDrag(Element* pElement){return false;}
-    virtual bool OnKey(Element* pElement){return false;}
+    virtual bool OnDraw(ElementPtr pElement,Graphics* pGraphics){return false;}
+    virtual bool OnUpdate(ElementPtr pElement){return false;}
+    virtual bool OnPressed(ElementPtr pElement){return false;}
+    virtual bool OnDrag(ElementPtr pElement){return false;}
+    virtual bool OnKey(ElementPtr pElement){return false;}
 };
 
 /**
  * @brief 
  */
-class Element
+class Element : public std::enable_shared_from_this<Element>
 {
 public:
 
-    static Element* Create(const Style& pStyle = Style());
+    static ElementPtr Create(const Style& pStyle = Style());
 
+    /**
+     * @brief 
+     */
+    Element();
     virtual ~Element();
 
     /**
@@ -61,7 +67,7 @@ public:
     uint32_t GetHeight()const{return mHeight;}
 
     const std::string GetID()const{return mID;}
-    const Element* GetParent()const{return mParent;}
+    const ElementPtr GetParent()const{return mParent;}
 
     int GetFont()const;
 
@@ -79,7 +85,7 @@ public:
     bool GetIsVisible()const{return mVisible;}
     bool GetIsActive()const{return mActive;}
 
-    Element* GetChildByID(const std::string_view& pID);
+    ElementPtr GetChildByID(const std::string_view& pID);
 
     void SetPos(uint32_t pX,uint32_t pY);
     void SetGrid(uint32_t pWidth,uint32_t pHeight);
@@ -99,8 +105,8 @@ public:
 
     void SetExtension(ElementExtension* pExtension);
 
-    void Attach(Element* pElement);
-    void Remove(Element* pElement);
+    void Attach(ElementPtr pElement);
+    void Remove(ElementPtr pElement);
     /**
      * @brief Updates all elements in the tree, if they are visible.
      * Doing full update before the draw allows all dependacies to have the correct data for rendering.
@@ -117,15 +123,9 @@ public:
      */
     bool TouchEvent(float pX,float pY,bool pTouched);
 
-protected:
-    /**
-     * @brief 
-     */
-    Element();
-
 private:
-    Element* mParent = nullptr;
-    std::list<Element*> mChildren;
+    ElementPtr mParent = nullptr;
+    std::list<ElementPtr> mChildren;
     std::string mID;                        //!< If set can be used to search from an element.
     std::string mText;                      //!< If set, it is displayed, based on settings in the style.
     int mFont = 0;                          //!< The font to use to render text, if zero, will use parents. Used GetFont to fetch the font to render with.

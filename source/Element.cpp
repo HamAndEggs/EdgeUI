@@ -1,13 +1,13 @@
 
 #include "Element.h"
-
+#include <memory>
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
-Element* Element::Create(const Style& pStyle)
+ElementPtr Element::Create(const Style& pStyle)
 {
-    Element* root = new Element();
+    ElementPtr root = std::make_shared<Element>();
     root->SetStyle(pStyle);
     return root;
 }
@@ -20,10 +20,6 @@ Element::Element()
 Element::~Element()
 {
     VERBOSE_MESSAGE("Freeing Element: " + mID);
-    for( auto e : mChildren )
-    {
-        delete e;
-    }
     delete mExtension;
     mExtension = nullptr;
 }
@@ -101,7 +97,7 @@ void Element::SetSpan(uint32_t pX,uint32_t pY)
     mSpanY = pY;
 }
 
-Element* Element::GetChildByID(const std::string_view& pID)
+ElementPtr Element::GetChildByID(const std::string_view& pID)
 {
     // First look for it in my children, if not, then ask them to look for it.
     for( auto child : mChildren )
@@ -109,7 +105,7 @@ Element* Element::GetChildByID(const std::string_view& pID)
         if( child->GetID() == pID )
             return child;
 
-        Element* found = child->GetChildByID(pID);
+        ElementPtr found = child->GetChildByID(pID);
         if( found )
             return found;
     }
@@ -146,14 +142,14 @@ void Element::SetExtension(ElementExtension* pExtension)
     mExtension = pExtension;
 }
 
-void Element::Attach(Element* pElement)
+void Element::Attach(ElementPtr pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
     mChildren.push_back(pElement);
-    pElement->mParent = this;
+    pElement->mParent = shared_from_this();
 }
 
-void Element::Remove(Element* pElement)
+void Element::Remove(ElementPtr pElement)
 {
     pElement->mParent = nullptr;
     mChildren.remove(pElement);
@@ -165,7 +161,7 @@ void Element::Update()
     {
         if( mExtension )
         {
-            if( mExtension->OnUpdate(this) )
+            if( mExtension->OnUpdate(shared_from_this()) )
                 return;
         }
 
@@ -195,7 +191,7 @@ void Element::Draw(Graphics* pGraphics)
 
         if( mExtension )
         {
-            if( mExtension->OnDraw(this,pGraphics) )
+            if( mExtension->OnDraw(shared_from_this(),pGraphics) )
                 return;
         }
 
@@ -216,7 +212,7 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
             // Is it in our rect?
             if( mExtension )
             {
-                if( mExtension->OnPressed(this) )
+                if( mExtension->OnPressed(shared_from_this()) )
                 {
                     return true;
                 }
