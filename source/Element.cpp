@@ -4,10 +4,45 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
+#ifdef VERBOSE_BUILD
+    struct ElementAllocationCounter
+    {    
+        ~ElementAllocationCounter()
+        {
+            VERBOSE_MESSAGE("ElementAllocationCounter: count == " << count);
+            VERBOSE_MESSAGE("ElementAllocationCounter: max == " << max);
+            assert(count == 0);
+        }
+
+        void Inc()
+        {
+            count++;
+            if( max < count )
+            {
+                max = count;
+            }
+        }
+
+        void Dev()
+        {
+            count--;
+        }
+
+    private:
+        int count = 0;
+        int max = 0;
+    };
+    ElementAllocationCounter Count;
+    #define COUNT_ALLOCATION() {Count.Inc();}
+    #define COUNT_DELETE() {Count.Dev();}
+#else
+    #define COUNT_ALLOCATION()
+    #define COUNT_DELETE()
+#endif
 
 ElementPtr Element::Create(const Style& pStyle)
 {
-    ElementPtr root = std::make_shared<Element>();
+    ElementPtr root = new Element();
     root->SetStyle(pStyle);
     return root;
 }
@@ -15,6 +50,7 @@ ElementPtr Element::Create(const Style& pStyle)
 Element::Element()
 {
     SET_DEFAULT_ID();
+    COUNT_ALLOCATION();
 }
 
 Element::~Element()
@@ -22,6 +58,11 @@ Element::~Element()
     VERBOSE_MESSAGE("Freeing Element: " + mID);
     delete mExtension;
     mExtension = nullptr;
+    for( auto child : mChildren )
+    {
+        delete child;
+    }
+    COUNT_DELETE();
 }
 
 Rectangle Element::GetContentRectangle()const
@@ -146,7 +187,7 @@ void Element::Attach(ElementPtr pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
     mChildren.push_back(pElement);
-    pElement->mParent = shared_from_this();
+    pElement->mParent = this;
 }
 
 void Element::Remove(ElementPtr pElement)
@@ -161,7 +202,7 @@ void Element::Update()
     {
         if( mExtension )
         {
-            if( mExtension->OnUpdate(shared_from_this()) )
+            if( mExtension->OnUpdate(this) )
                 return;
         }
 
@@ -191,7 +232,7 @@ void Element::Draw(Graphics* pGraphics)
 
         if( mExtension )
         {
-            if( mExtension->OnDraw(shared_from_this(),pGraphics) )
+            if( mExtension->OnDraw(this,pGraphics) )
                 return;
         }
 
@@ -212,7 +253,7 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
             // Is it in our rect?
             if( mExtension )
             {
-                if( mExtension->OnPressed(shared_from_this()) )
+                if( mExtension->OnPressed(this) )
                 {
                     return true;
                 }

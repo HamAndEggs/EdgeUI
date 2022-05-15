@@ -16,7 +16,7 @@ namespace eui{
 class Element;
 class Graphics;
 
-typedef std::shared_ptr<class Element> ElementPtr;
+typedef Element* ElementPtr;
 
 /**
  * @brief This is an interface class used to allow an application to extend the functionality of an element.
@@ -42,7 +42,7 @@ public:
 /**
  * @brief 
  */
-class Element : public std::enable_shared_from_this<Element>
+class Element
 {
 public:
 
