@@ -44,11 +44,7 @@ class Element
 {
 public:
 
-    /**
-     * @brief Width and Height are fraction of parent.
-     */
-    static Element* Create(float pWidth = 1.0f,float pHeight = 1.0f);
-    static Element* Create(const Style& pStyle,float pWidth = 1.0f,float pHeight = 1.0f);
+    static Element* Create(const Style& pStyle = Style());
 
     virtual ~Element();
 
@@ -58,6 +54,11 @@ public:
      */
     Rectangle GetContentRectangle()const;
     Rectangle GetParentRectangle()const;
+
+    uint32_t GetParentWidth()const;
+    uint32_t GetParentHeight()const;
+    uint32_t GetWidth()const{return mWidth;}
+    uint32_t GetHeight()const{return mHeight;}
 
     const std::string GetID()const{return mID;}
     const Element* GetParent()const{return mParent;}
@@ -80,13 +81,10 @@ public:
 
     Element* GetChildByID(const std::string_view& pID);
 
-    /**
-     * @brief Set the position based on fraction of the width of the parent and relitive to it's x.
-     */
-    void SetLeftTop(const Point& pPos);
-    void SetLeftTop(float pX,float pY){SetLeftTop(Point(pX,pY));}
-    void SetRightBottom(const Point& pSize);
-    void SetRightBottom(float pX,float pY){SetRightBottom(Point(pX,pY));}
+    void SetPos(uint32_t pX,uint32_t pY);
+    void SetGrid(uint32_t pWidth,uint32_t pHeight);
+    void SetSpan(uint32_t pX,uint32_t pY);
+
     void SetPadding(float pPadding);
     void SetPadding(const Rectangle& pPadding);
 
@@ -135,7 +133,13 @@ private:
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's childrent will not be. May still be drawn.
 
     Style mStyle;
-    Rectangle mRect = {0.0f,0.0f,1.0f,1.0f};    //!< Rect is expressed as fraction of parent size. If no parent then the display size is used, again a fraction off.
+    uint32_t mX = 0;
+    uint32_t mY = 0;
+    uint32_t mWidth = 1;
+    uint32_t mHeight = 1;
+    uint32_t mSpanX = 1;
+    uint32_t mSpanY = 1;
+
     Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
 
     ElementExtension* mExtension = nullptr;

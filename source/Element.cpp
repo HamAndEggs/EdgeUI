@@ -1,21 +1,13 @@
 
 #include "Element.h"
-#include "LayoutGrid.h"
 
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
-Element* Element::Create(float pWidth,float pHeight)
+Element* Element::Create(const Style& pStyle)
 {
     Element* root = new Element();
-    root->SetRightBottom(pWidth,pHeight);
-    return root;
-}
-
-Element* Element::Create(const Style& pStyle,float pWidth,float pHeight)
-{
-    Element* root = Create(pWidth,pHeight);
     root->SetStyle(pStyle);
     return root;
 }
@@ -39,9 +31,12 @@ Element::~Element()
 Rectangle Element::GetContentRectangle()const
 {
     const Rectangle parentContentRect = GetParentRectangle();
+    const float cellWidth = 1.0f / GetParentWidth();
+    const float cellHeight = 1.0f / GetParentHeight();
+    const Rectangle rect = {cellWidth * mX,cellHeight*mY,cellWidth * (mX + mSpanX),cellHeight * (mY + mSpanY)};
 
-    const Rectangle contentRect(parentContentRect.GetX(mRect.left),parentContentRect.GetY(mRect.top),
-                                parentContentRect.GetX(mRect.right),parentContentRect.GetY(mRect.bottom));
+    const Rectangle contentRect(parentContentRect.GetX(rect.left),parentContentRect.GetY(rect.top),
+                                parentContentRect.GetX(rect.right),parentContentRect.GetY(rect.bottom));
 
 //    return contentRect;
     return Rectangle(contentRect.GetX(mPadding.left),contentRect.GetY(mPadding.top),contentRect.GetX(mPadding.right),contentRect.GetY(mPadding.bottom));
@@ -56,6 +51,25 @@ Rectangle Element::GetParentRectangle()const
     return Graphics::Get()->GetDisplayRect();
 }
 
+uint32_t Element::GetParentWidth()const
+{
+    if( mParent )
+    {
+        return mParent->GetWidth();
+    }
+    return 1;
+}
+
+uint32_t Element::GetParentHeight()const
+{
+    if( mParent )
+    {
+        return mParent->GetHeight();
+    }
+    return 1;
+}
+
+
 int Element::GetFont()const
 {
     if( mFont > 0 )
@@ -67,6 +81,24 @@ int Element::GetFont()const
         return mParent->GetFont();
     }
     return 0;
+}
+
+void Element::SetPos(uint32_t pX,uint32_t pY)
+{
+    mX = pX;
+    mY = pY;
+}
+
+void Element::SetGrid(uint32_t pWidth,uint32_t pHeight)
+{
+    mWidth = pWidth;
+    mHeight = pHeight;
+}
+
+void Element::SetSpan(uint32_t pX,uint32_t pY)
+{
+    mSpanX = pX;
+    mSpanY = pY;
 }
 
 Element* Element::GetChildByID(const std::string_view& pID)
@@ -82,19 +114,6 @@ Element* Element::GetChildByID(const std::string_view& pID)
             return found;
     }
     return nullptr;
-}
-
-void Element::SetLeftTop(const Point& pPos)
-{
-    mRect.left = pPos.x;
-    mRect.top = pPos.y;
-}
-
-void Element::SetRightBottom(const Point& pPos)
-{
-    mRect.right = pPos.x;
-    mRect.bottom = pPos.y;
-
 }
 
 void Element::SetPadding(float pPadding)
