@@ -201,16 +201,10 @@ protected:
 
 	struct
 	{
-		GLShaderPtr ColourOnly2D;
-		GLShaderPtr TextureColour2D;
-		GLShaderPtr TextureAlphaOnly2D;
-		GLShaderPtr SpriteShader2D;
-		GLShaderPtr QuadBatchShader2D;
-		GLShaderPtr TexturedRoundedRect2D;	//!< Custom shader for just textured rounded rectangles.
-
-
-		GLShaderPtr ColourOnly3D;
-		GLShaderPtr TextureOnly3D;
+		GLShaderPtr ColourOnly;
+		GLShaderPtr TextureColour;
+		GLShaderPtr TextureAlphaOnly;
+		GLShaderPtr TexturedRoundedRect;	//!< Custom shader for just textured rounded rectangles.
 
 		GLShaderPtr CurrentShader;
 	}mShaders;
@@ -219,6 +213,7 @@ protected:
 	{
 		float projection[4][4];
 		float transform[4][4];
+		bool transformIsIdentity = false;
 	}mMatrices;
 
 	struct RoundedRectData
@@ -249,7 +244,20 @@ protected:
 	 */
     void SetProjection2D();
 
-	void SetTransform(float pTransform[4][4]);
+	/**
+	 * @brief Set the transform matrix, to use to identity use SetTransformIdentity.
+	 * 
+	 * @param pTransform 
+	 */
+	void SetTransform(const float pTransform[4][4]);
+
+	/**
+	 * @brief Set the Transform to an identity
+	 * Because most of the time the transform is an identiy,
+	 * we us a bool to only set it when it needs to be.
+	 * We're on low end system, sending 16 floats to the gpu for every render is felt.
+	 */
+	void SetTransformIdentity();
 
 	/**
 	 * @brief Build the shaders that we need for basic rendering. If you need more copy the code and go multiply :)

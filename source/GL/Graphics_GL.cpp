@@ -119,18 +119,11 @@ Graphics::~Graphics()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 
 	mShaders.CurrentShader.reset();
-	mShaders.ColourOnly2D.reset();
-	mShaders.TextureColour2D.reset();
-	mShaders.TextureAlphaOnly2D.reset();
-	mShaders.SpriteShader2D.reset();
-	mShaders.QuadBatchShader2D.reset();
-	mShaders.TexturedRoundedRect2D.reset();
+	mShaders.ColourOnly.reset();
+	mShaders.TextureColour.reset();
+	mShaders.TextureAlphaOnly.reset();
+	mShaders.TexturedRoundedRect.reset();
 	
-
-	mShaders.ColourOnly3D.reset();
-	mShaders.TextureOnly3D.reset();
-
-
 	// delete all free type fonts.
 	mFreeTypeFonts.clear();
 	if( mFreetype != nullptr )
@@ -309,12 +302,14 @@ void Graphics::BeginFrame()
 {
 	mDiagnostics.frameNumber++;
 
+	// Force identity transform matrix.
+	mMatrices.transformIsIdentity = true;
+	const float Identity[4][4] ={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+	memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
+
 	// Reset some items so that we have a working render setup to begin the frame with.
 	// This is done so that I don't have to have a load of if statements to deal with first frame. Also makes life simpler for the more minimal applications.
-	EnableShader(mShaders.ColourOnly2D);
-
-	static float identity[4][4] = {{1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1}};
-	SetTransform(identity);
+	EnableShader(mShaders.ColourOnly);
 }
 
 void Graphics::EndFrame()
@@ -387,7 +382,8 @@ void Graphics::FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const s
 	font->BuildQuads(ptr,pX,pY,mWorkBuffers.vertices,mWorkBuffers.uvs);
 
 	assert(font->mTexture);
-	EnableShader(mShaders.TextureAlphaOnly2D);
+	EnableShader(mShaders.TextureAlphaOnly);
+	SetTransformIdentity();
 	mShaders.CurrentShader->SetTexture(font->mTexture);
 	mShaders.CurrentShader->SetGlobalColour(pColour);
 
@@ -459,6 +455,8 @@ Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)con
 
 void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 {
+	SetTransformIdentity();
+
 	if( pStyle.mTexture )
 	{
 		// Later this will respect the rounded corners and board of the style.
@@ -468,7 +466,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 		}
 		else
 		{
-			EnableShader(mShaders.TexturedRoundedRect2D);
+			EnableShader(mShaders.TexturedRoundedRect);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 			mShaders.CurrentShader->SetTexture(pStyle.mTexture);
 
@@ -492,7 +490,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			const int numPoints = mWorkBuffers.vertices.Used();
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
-			EnableShader(mShaders.ColourOnly2D);
+			EnableShader(mShaders.ColourOnly);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 
 			VertexPtr(2,GL_FLOAT,points);
@@ -504,7 +502,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			float quad[8];    
 			pRect.GetQuad(quad);
 
-			EnableShader(mShaders.ColourOnly2D);
+			EnableShader(mShaders.ColourOnly);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 			VertexPtr(2,GL_FLOAT,quad);
 			glDrawArrays(GL_TRIANGLE_FAN,0,4);
@@ -531,7 +529,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			const int numPoints = mWorkBuffers.vertices.Used();
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
-			EnableShader(mShaders.ColourOnly2D);
+			EnableShader(mShaders.ColourOnly);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
 			VertexPtr(2,GL_FLOAT,points);
 			glDrawArrays(primType,0,numPoints);
@@ -543,7 +541,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			float quad[8];    
 			pRect.GetQuad(quad);
 
-			EnableShader(mShaders.ColourOnly2D);
+			EnableShader(mShaders.ColourOnly);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 			VertexPtr(2,GL_FLOAT,quad);
 
@@ -565,7 +563,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 		float quad[8];    
 		pRect.GetQuad(quad);
 
-		EnableShader(mShaders.ColourOnly2D);
+		EnableShader(mShaders.ColourOnly);
 		mShaders.CurrentShader->SetGlobalColour(MakeColour(255,0,255));
 		VertexPtr(2,GL_FLOAT,quad);
 		glDrawArrays(GL_LINE_LOOP,0,4);
@@ -583,7 +581,8 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 	if( pColour == COLOUR_NONE )
 		pColour = COLOUR_WHITE;
 
-	EnableShader(mShaders.TextureColour2D);
+	EnableShader(mShaders.TextureColour);
+	SetTransformIdentity();	
 	mShaders.CurrentShader->SetGlobalColour(pColour);
 	mShaders.CurrentShader->SetTexture(pTexture);
 
@@ -602,11 +601,12 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 
 void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth)
 {
+	SetTransformIdentity();
 	if( pWidth < 2 )
 	{
 		const float quad[4] = {pFromX,pFromY,pToX,pToY};
 
-		EnableShader(mShaders.ColourOnly2D);
+		EnableShader(mShaders.ColourOnly);
 		mShaders.CurrentShader->SetGlobalColour(pColour);
 
 		VertexPtr(2,GL_FLOAT,quad);
@@ -665,7 +665,7 @@ void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour p
 			p[5].y = pToY - pWidth;			
 		}
 
-		EnableShader(mShaders.ColourOnly2D);
+		EnableShader(mShaders.ColourOnly);
 		mShaders.CurrentShader->SetGlobalColour(pColour);
 
 		VertexPtr(2,GL_FLOAT,p);
@@ -959,28 +959,36 @@ void Graphics::SetProjection2D()
 	glDepthMask(false);    
 }
 
-void Graphics::SetTransform(float pTransform[4][4])
+void Graphics::SetTransform(const float pTransform[4][4])
 {
 	assert(mShaders.CurrentShader);
 	memcpy(mMatrices.transform,pTransform,sizeof(float) * 4 * 4);
-	mShaders.CurrentShader->SetTransform(pTransform);
+	mShaders.CurrentShader->SetTransform(mMatrices.transform);
+	mMatrices.transformIsIdentity = false;
 }
+
+void Graphics::SetTransformIdentity()
+{
+	assert(mShaders.CurrentShader);
+	if( mMatrices.transformIsIdentity == false )
+	{
+		const float Identity[4][4] = 
+		{
+			{1,0,0,0},
+			{0,1,0,0},
+			{0,0,1,0},
+			{0,0,0,1}
+		};
+		memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
+		mShaders.CurrentShader->SetTransform(mMatrices.transform);
+		mMatrices.transformIsIdentity = true;
+	}
+}
+
 
 void Graphics::BuildShaders()
 {
-	const char* ColourOnly2D_VS = R"(
-		uniform mat4 u_proj_cam;
-		uniform vec4 u_global_colour;
-		attribute vec4 a_xyz;
-		varying vec4 v_col;
-		void main(void)
-		{
-			v_col = u_global_colour;
-			gl_Position = u_proj_cam * a_xyz;
-		}
-	)";
-
-	const char *ColourOnly2D_PS = R"(
+	const char *ColourOnly_PS = R"(
 		varying vec4 v_col;
 		void main(void)
 		{
@@ -988,24 +996,7 @@ void Graphics::BuildShaders()
 		}
 	)";
 
-	mShaders.ColourOnly2D = std::make_unique<GLShader>("ColourOnly2D",ColourOnly2D_VS,ColourOnly2D_PS);
-
-	const char* TextureColour2D_VS = R"(
-		uniform mat4 u_proj_cam;
-		uniform vec4 u_global_colour;
-		attribute vec4 a_xyz;
-		attribute vec2 a_uv0;
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		void main(void)
-		{
-			v_col = u_global_colour;
-			v_tex0 = a_uv0;
-			gl_Position = u_proj_cam * a_xyz;
-		}
-	)";
-
-	const char *TextureColour2D_PS = R"(
+	const char *TextureColour_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
@@ -1015,36 +1006,20 @@ void Graphics::BuildShaders()
 		}
 	)";
 
-	mShaders.TextureColour2D = std::make_unique<GLShader>("TextureColour2D",TextureColour2D_VS,TextureColour2D_PS);
-
-	const char* TextureAlphaOnly2D_VS = R"(
+	const char* ColourOnly_VS = R"(
 		uniform mat4 u_proj_cam;
+		uniform mat4 u_trans;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
-		attribute vec2 a_uv0;
 		varying vec4 v_col;
-		varying vec2 v_tex0;
 		void main(void)
 		{
 			v_col = u_global_colour;
-			v_tex0 = a_uv0;
-			gl_Position = u_proj_cam * a_xyz;
+			gl_Position = u_proj_cam * (u_trans * a_xyz);
 		}
 	)";
 
-	const char *TextureAlphaOnly2D_PS = R"(
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		uniform sampler2D u_tex0;
-		void main(void)
-		{
-			gl_FragColor = vec4(v_col.rgb,texture2D(u_tex0,v_tex0).a);
-		}
-	)";
-
-	mShaders.TextureAlphaOnly2D = std::make_unique<GLShader>("TextureAlphaOnly2D",TextureAlphaOnly2D_VS,TextureAlphaOnly2D_PS);
-	
-	const char* SpriteShader2D_VS = R"(
+	const char* TextureColour_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform mat4 u_trans;
 		uniform vec4 u_global_colour;
@@ -1060,72 +1035,22 @@ void Graphics::BuildShaders()
 		}
 	)";
 
-	const char *SpriteShader2D_PS = R"(
+	mShaders.ColourOnly = std::make_unique<GLShader>("ColourOnly",ColourOnly_VS,ColourOnly_PS);
+	mShaders.TextureColour = std::make_unique<GLShader>("TextureColour",TextureColour_VS,TextureColour_PS);
+
+	const char *TextureAlphaOnly_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
 		void main(void)
 		{
-			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
+			gl_FragColor = vec4(v_col.rgb,texture2D(u_tex0,v_tex0).a);
 		}
 	)";
 
-	mShaders.SpriteShader2D = std::make_unique<GLShader>("SpriteShader2D",SpriteShader2D_VS,SpriteShader2D_PS);
+	mShaders.TextureAlphaOnly = std::make_unique<GLShader>("TextureAlphaOnly",TextureColour_VS,TextureAlphaOnly_PS);
 
-	const char* QuadBatchShader2D_VS = R"(
-		uniform mat4 u_proj_cam;
-		uniform vec4 u_global_colour;
-		attribute vec4 a_xyz;
-		attribute vec2 a_uv0;
-		attribute vec4 a_trans;
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		void main(void)
-		{
-			float scale = a_trans.w;
-			float sCos = cos(a_trans.z * 0.00019175455);
-			float sSin = sin(a_trans.z * 0.00019175455);
-
-			mat4 trans;
-			trans[0][0] = sCos * scale;
-			trans[0][1] = sSin * scale;
-			trans[0][2] = 0.0; 
-			trans[0][3] = 0.0;
-
-			trans[1][0] = -sSin * scale;
-			trans[1][1] = sCos * scale;
-			trans[1][2] = 0.0; 
-			trans[1][3] = 0.0;
-
-			trans[2][0] = 0.0;
-			trans[2][1] = 0.0;
-			trans[2][2] = scale;
-			trans[2][3] = 0.0;
-
-			trans[3][0] = a_trans.x;
-			trans[3][1] = a_trans.y;
-			trans[3][2] = 0.0;
-			trans[3][3] = 1.0;
-
-			v_col = u_global_colour;
-			v_tex0 = a_uv0;
-			gl_Position = u_proj_cam * (trans * a_xyz);
-		}
-	)";
-
-	const char *QuadBatchShader2D_PS = R"(
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		uniform sampler2D u_tex0;
-		void main(void)
-		{
-			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
-		}
-	)";
-
-	mShaders.QuadBatchShader2D = std::make_unique<GLShader>("QuadBatchShader2D",QuadBatchShader2D_VS,QuadBatchShader2D_PS);
-
-	const char* TexturedRoundedRect2D_VS = R"(
+	const char* TexturedRoundedRect_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform vec4 u_global_colour;
 		uniform vec4 u_textTrans;
@@ -1140,70 +1065,7 @@ void Graphics::BuildShaders()
 		}
 	)";
 
-	const char *TexturedRoundedRect2D_PS = R"(
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		uniform sampler2D u_tex0;
-		void main(void)
-		{
-			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
-		}
-	)";
-
-	mShaders.TexturedRoundedRect2D = std::make_unique<GLShader>("TexturedRoundedRect2D",TexturedRoundedRect2D_VS,TexturedRoundedRect2D_PS);
-
-
-	const char* ColourOnly3D_VS = R"(
-		uniform mat4 u_proj_cam;
-		uniform mat4 u_trans;
-		uniform vec4 u_global_colour;		
-		attribute vec4 a_xyz;
-		attribute vec4 a_col;
-		varying vec4 v_col;
-		void main(void)
-		{
-			v_col = u_global_colour * a_col;
-			gl_Position = u_proj_cam * (u_trans * a_xyz);
-		}
-	)";
-
-	const char *ColourOnly3D_PS = R"(
-		varying vec4 v_col;
-		void main(void)
-		{
-			gl_FragColor = v_col;
-		}
-	)";
-
-	mShaders.ColourOnly3D = std::make_unique<GLShader>("ColourOnly3D",ColourOnly3D_VS,ColourOnly3D_PS);	
-
-	const char* TextureOnly3D_VS = R"(
-		uniform mat4 u_proj_cam;
-		uniform mat4 u_trans;
-		uniform vec4 u_global_colour;		
-		attribute vec4 a_xyz;
-		attribute vec2 a_uv0;
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		void main(void)
-		{
-			v_col = u_global_colour;
-			v_tex0 = a_uv0;
-			gl_Position = u_proj_cam * (u_trans * a_xyz);
-		}
-	)";
-
-	const char *TextureOnly3D_PS = R"(
-		varying vec4 v_col;
-		varying vec2 v_tex0;
-		uniform sampler2D u_tex0;
-		void main(void)
-		{
-			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
-		}
-	)";
-
-	mShaders.TextureOnly3D = std::make_unique<GLShader>("TextureOnly3D",TextureOnly3D_VS,TextureOnly3D_PS);	
+	mShaders.TexturedRoundedRect = std::make_unique<GLShader>("TexturedRoundedRect",TexturedRoundedRect_VS,TextureColour_PS);
 }
 
 void Graphics::EnableShader(GLShaderPtr pShader)
@@ -1212,8 +1074,7 @@ void Graphics::EnableShader(GLShaderPtr pShader)
 	if( mShaders.CurrentShader != pShader )
 	{
 		mShaders.CurrentShader = pShader;
-		pShader->Enable(mMatrices.projection);
-		pShader->SetTransform(mMatrices.transform);
+		pShader->Enable(mMatrices.projection,mMatrices.transform);
 	}
 }
 

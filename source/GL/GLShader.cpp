@@ -10,10 +10,9 @@ namespace eui{
 GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFragment) :
 	mName(pName),
 	mEnableStreamUV(strstr(pVertex," a_uv0;")),
-	mEnableStreamTrans(strstr(pVertex," a_trans;")),
 	mEnableStreamColour(strstr(pVertex," a_col;"))
 {
-	VERBOSE_SHADER_MESSAGE("Creating " << mName << " mEnableStreamUV " << mEnableStreamUV << " mEnableStreamTrans" << mEnableStreamTrans << " mEnableStreamColour" << mEnableStreamColour);
+	VERBOSE_SHADER_MESSAGE("Creating " << mName << " mEnableStreamUV " << mEnableStreamUV << " mEnableStreamColour" << mEnableStreamColour);
 
 	mVertexShader = LoadShader(GL_VERTEX_SHADER,pVertex);
 
@@ -35,7 +34,6 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 	BindAttribLocation((int)StreamIndex::VERTEX, "a_xyz");
 	BindAttribLocation((int)StreamIndex::TEXCOORD, "a_uv0");
 	BindAttribLocation((int)StreamIndex::COLOUR, "a_col");
-	BindAttribLocation((int)StreamIndex::TRANSFORM, "a_trans");
 
 	glLinkProgram(mShader); // creates OpenGL program executables
 	CHECK_OGL_ERRORS();
@@ -118,7 +116,7 @@ void GLShader::BindAttribLocation(int location,const char* pName)
 	VERBOSE_SHADER_MESSAGE( mName << " AttribLocation("<< pName << "," << location << ")");
 }
 
-void GLShader::Enable(const float projInvcam[4][4])
+void GLShader::Enable(const float projInvcam[4][4],const float pTransform[4][4])
 {
 #ifdef VERBOSE_SHADER_BUILD
 	gCurrentShaderName = mName;
@@ -131,6 +129,8 @@ void GLShader::Enable(const float projInvcam[4][4])
     glUniformMatrix4fv(mUniforms.proj_cam, 1, false,(const float*)projInvcam);
     CHECK_OGL_ERRORS();
 
+	SetTransform(pTransform);
+
 	if( mEnableStreamUV )
 	{
 		glEnableVertexAttribArray((int)StreamIndex::TEXCOORD);
@@ -138,15 +138,6 @@ void GLShader::Enable(const float projInvcam[4][4])
 	else
 	{
 		glDisableVertexAttribArray((int)StreamIndex::TEXCOORD);
-	}
-
-	if( mEnableStreamTrans )
-	{
-		glEnableVertexAttribArray((int)StreamIndex::TRANSFORM);
-	}
-	else
-	{
-		glDisableVertexAttribArray((int)StreamIndex::TRANSFORM);
 	}
 
 	if( mEnableStreamColour )
@@ -157,19 +148,15 @@ void GLShader::Enable(const float projInvcam[4][4])
 	{
 		glDisableVertexAttribArray((int)StreamIndex::COLOUR);
 	}
-	
-
 
     CHECK_OGL_ERRORS();
 }
 
-void GLShader::SetTransform(float pTransform[4][4])
+void GLShader::SetTransform(const float pTransform[4][4])
 {
-	if( mUniforms.trans >= 0 )
-	{
-		glUniformMatrix4fv(mUniforms.trans, 1, false,(const GLfloat*)pTransform);
-		CHECK_OGL_ERRORS();
-	}
+	assert(mUniforms.trans >= 0 );
+	glUniformMatrix4fv(mUniforms.trans, 1, false,(const GLfloat*)pTransform);
+	CHECK_OGL_ERRORS();
 }
 
 void GLShader::SetGlobalColour(const Colour pColour)
@@ -226,7 +213,8 @@ int GLShader::LoadShader(int type, const char* shaderCode)
 	{
 		GLint infoLen = 0;
 		glGetShaderiv ( shaderFrag, GL_INFO_LOG_LENGTH, &infoLen );
-		std::string error = "Failed to compile shader, infoLen " + std::to_string(infoLen) + "\n";
+		const std::string shaderType = (type == GL_VERTEX_SHADER) ? "GL_VERTEX_SHADER" : "GL_FRAGMENT_SHADER";
+		std::string error = "Failed to compile shader, " + shaderType + ", infoLen " + std::to_string(infoLen) + "\n";
 
 		if ( infoLen > 1 )
 		{
@@ -237,6 +225,8 @@ int GLShader::LoadShader(int type, const char* shaderCode)
 			error += error_message;
 		}
 		glDeleteShader ( shaderFrag );
+		std::cerr << shaderCode << "\n";
+
 		THROW_MEANINGFUL_EXCEPTION(error);
 	}
 	CHECK_OGL_ERRORS();

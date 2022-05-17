@@ -14,7 +14,6 @@ enum struct StreamIndex
 	VERTEX				= 0,		//!< Vertex positional data.
 	TEXCOORD			= 1,		//!< Texture coordinate information.
 	COLOUR				= 2,		//!< Colour type is in the format RGBA.
-	TRANSFORM			= 3,		//!< Used for sprite batches.
 };
 
 
@@ -25,8 +24,8 @@ struct GLShader
 
 	int GetUniformLocation(const char* pName);
 	void BindAttribLocation(int location,const char* pName);
-	void Enable(const float projInvcam[4][4]);
-	void SetTransform(float transform[4][4]);
+	void Enable(const float projInvcam[4][4],const float pTransform[4][4]);
+	void SetTransform(const float transform[4][4]);
 	void SetGlobalColour(const Colour pColour);
 	void SetGlobalColour(float red,float green,float blue,float alpha);
 	void SetTexture(GLint texture);
@@ -37,7 +36,6 @@ struct GLShader
 
 	const std::string mName;	//!< Mainly to help debugging.
 	const bool mEnableStreamUV;
-	const bool mEnableStreamTrans;
 	const bool mEnableStreamColour;
 
 	GLint mShader = 0;
