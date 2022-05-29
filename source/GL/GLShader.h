@@ -24,12 +24,12 @@ struct GLShader
 
 	int GetUniformLocation(const char* pName);
 	void BindAttribLocation(int location,const char* pName);
-	void Enable(const float projInvcam[4][4],const float pTransform[4][4]);
+	void Enable(const float projInvcam[4][4],const float pTransform[4][4],const float pTextureTransform[4][4]);
 	void SetTransform(const float transform[4][4]);
 	void SetGlobalColour(const Colour pColour);
 	void SetGlobalColour(float red,float green,float blue,float alpha);
 	void SetTexture(GLint texture);
-	void SetTextureTransform(float pTransform[4]);
+	void SetTextureTransform(const float pTransform[4][4]);
 
 	bool GetUsesTexture()const{return mUniforms.tex0 > -1;}
 	bool GetUsesTransform()const{return mUniforms.trans > -1;}

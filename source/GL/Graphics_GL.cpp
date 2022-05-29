@@ -118,11 +118,11 @@ Graphics::~Graphics()
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 
-	mShaders.CurrentShader.reset();
-	mShaders.ColourOnly.reset();
-	mShaders.TextureColour.reset();
-	mShaders.TextureAlphaOnly.reset();
-	mShaders.TexturedRoundedRect.reset();
+	delete mShaders.ColourOnly;
+	delete mShaders.TextureColour;
+	delete mShaders.TextureAlphaOnly;
+	delete mShaders.RectangleBorder;
+
 	
 	// delete all free type fonts.
 	mFreeTypeFonts.clear();
@@ -162,7 +162,7 @@ int32_t Graphics::GetDisplayHeight()const
 
 void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius)
 {
-	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS);
+	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_VERTICES);
 
 	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
 	const float AD = mRoundedRect.ANGLE_INC;
@@ -222,7 +222,7 @@ void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& 
 
 void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,float pThickness)
 {
-	VertXY* verts = rBuffer.Restart( (mRoundedRect.NUM_POINTS_PER_CORNER * mRoundedRect.NUM_QUADRANTS * 2) + 2);
+	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_BOARDER_VERTICES);
 	VertXY* first = verts;
 
 	const float outerSize = std::min(pRect.GetWidth()*pRadius,pRect.GetHeight()*pRadius);
@@ -302,10 +302,14 @@ void Graphics::BeginFrame()
 {
 	mDiagnostics.frameNumber++;
 
+	const float Identity[4][4] ={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+
 	// Force identity transform matrix.
 	mMatrices.transformIsIdentity = true;
-	const float Identity[4][4] ={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
 	memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
+
+	mMatrices.textureTransformIsIdentity = true;
+	memcpy(mMatrices.textureTransform,Identity,sizeof(float) * 4 * 4);
 
 	// Reset some items so that we have a working render setup to begin the frame with.
 	// This is done so that I don't have to have a load of if statements to deal with first frame. Also makes life simpler for the more minimal applications.
@@ -466,16 +470,24 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 		}
 		else
 		{
-			EnableShader(mShaders.TexturedRoundedRect);
+			EnableShader(mShaders.TextureColour);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 			mShaders.CurrentShader->SetTexture(pStyle.mTexture);
-
-			float trans[4] = {-pRect.left,-pRect.top,1.0f / pRect.GetWidth(),1.0f / pRect.GetHeight()};
-			mShaders.CurrentShader->SetTextureTransform(trans);
+			SetTextureTransformIdentity();
 
 			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+			const Rectangle uv = {0,0,1,1};
+			GetRoundedRectanglePoints(uv,mWorkBuffers.uvs,pStyle.mRadius);
 
 			VertexPtr(2,GL_FLOAT,mWorkBuffers.vertices.Data());
+
+			glVertexAttribPointer(
+				(GLuint)StreamIndex::TEXCOORD,
+				2,
+				GL_FLOAT,
+				GL_FALSE,
+				0,mWorkBuffers.uvs.Data());
+
 			glDrawArrays(GL_TRIANGLE_FAN,0,mWorkBuffers.vertices.Used());
 			CHECK_OGL_ERRORS();
 
@@ -529,9 +541,33 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			const int numPoints = mWorkBuffers.vertices.Used();
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
-			EnableShader(mShaders.ColourOnly);
+			EnableShader(mShaders.RectangleBorder);
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
 			VertexPtr(2,GL_FLOAT,points);
+
+			const void* colours = mRoundedRect.BoarderWhite.data();
+			switch (pStyle.mBoarderStyle)
+			{
+			case Style::BS_SOLID:
+				break;
+			
+			case Style::BS_RAISED:
+				colours = mRoundedRect.BoarderRaised.data();
+				break;
+
+			case Style::BS_DEPRESSED:
+				colours = mRoundedRect.BoarderDepressed.data();
+				break;
+			}
+
+			glVertexAttribPointer(
+						(GLuint)StreamIndex::COLOUR,
+						4,
+						GL_UNSIGNED_BYTE,
+						GL_TRUE,
+						0,colours);
+			CHECK_OGL_ERRORS();
+
 			glDrawArrays(primType,0,numPoints);
 			CHECK_OGL_ERRORS();
 
@@ -578,8 +614,7 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 	
 	pRect.GetQuad(quad);
 
-	if( pColour == COLOUR_NONE )
-		pColour = COLOUR_WHITE;
+	assert( pColour != COLOUR_NONE );
 
 	EnableShader(mShaders.TextureColour);
 	SetTransformIdentity();	
@@ -913,6 +948,64 @@ void Graphics::InitFreeTypeFont()
 
 void Graphics::InitRoundedRect()
 {
+	auto PUSH_LIGHT = [this]()
+	{
+		mRoundedRect.BoarderWhite.push_back(eui::COLOUR_WHITE);
+		mRoundedRect.BoarderWhite.push_back(eui::COLOUR_WHITE);
+
+		mRoundedRect.BoarderRaised.push_back(eui::COLOUR_WHITE);
+		mRoundedRect.BoarderRaised.push_back(eui::COLOUR_LIGHT_GREY);
+
+		mRoundedRect.BoarderDepressed.push_back(eui::COLOUR_DARK_GREY);
+		mRoundedRect.BoarderDepressed.push_back(eui::COLOUR_BLACK);
+	};
+
+	auto PUSH_DARK = [this]()
+	{
+		mRoundedRect.BoarderWhite.push_back(eui::COLOUR_WHITE);
+		mRoundedRect.BoarderWhite.push_back(eui::COLOUR_WHITE);
+
+		mRoundedRect.BoarderRaised.push_back(eui::COLOUR_DARK_GREY);
+		mRoundedRect.BoarderRaised.push_back(eui::COLOUR_BLACK);
+
+		mRoundedRect.BoarderDepressed.push_back(eui::COLOUR_WHITE);
+		mRoundedRect.BoarderDepressed.push_back(eui::COLOUR_LIGHT_GREY);		
+	};
+
+
+// Top right
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER/2 ; n++ )
+	{
+		PUSH_LIGHT();
+	}
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER/2 ; n++ )
+	{
+		PUSH_DARK();
+	}
+// Bottom right
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ )
+	{
+		PUSH_DARK();
+	}
+// Bottom left
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER/2 ; n++ )
+	{
+		PUSH_DARK();
+	}
+
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER/2 ; n++ )
+	{
+		PUSH_LIGHT();
+	}
+// Top left
+	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++ )
+	{
+		PUSH_LIGHT();
+	}
+
+	PUSH_LIGHT();
+	PUSH_LIGHT();
+	PUSH_LIGHT();
 }
 
 void Graphics::SetProjection2D()
@@ -985,6 +1078,31 @@ void Graphics::SetTransformIdentity()
 	}
 }
 
+void Graphics::SetTextureTransform(const float pTransform[4][4])
+{
+	assert(mShaders.CurrentShader);
+	memcpy(mMatrices.textureTransform,pTransform,sizeof(float) * 4 * 4);
+	mShaders.CurrentShader->SetTextureTransform(mMatrices.textureTransform);
+	mMatrices.textureTransformIsIdentity = false;
+}
+
+void Graphics::SetTextureTransformIdentity()
+{
+	assert(mShaders.CurrentShader);
+	if( mMatrices.textureTransformIsIdentity == false )
+	{
+		const float Identity[4][4] = 
+		{
+			{1,0,0,0},
+			{0,1,0,0},
+			{0,0,1,0},
+			{0,0,0,1}
+		};
+		memcpy(mMatrices.textureTransform,Identity,sizeof(float) * 4 * 4);
+		mShaders.CurrentShader->SetTextureTransform(mMatrices.textureTransform);
+		mMatrices.textureTransformIsIdentity = true;
+	}
+}
 
 void Graphics::BuildShaders()
 {
@@ -1022,21 +1140,19 @@ void Graphics::BuildShaders()
 	const char* TextureColour_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform mat4 u_trans;
+		uniform mat4 u_textTrans;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
-		attribute vec2 a_uv0;
+		attribute vec4 a_uv0;
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		void main(void)
 		{
 			v_col = u_global_colour;
-			v_tex0 = a_uv0;
+			v_tex0 = (a_uv0 * u_textTrans).xy;
 			gl_Position = u_proj_cam * (u_trans * a_xyz);
 		}
 	)";
-
-	mShaders.ColourOnly = std::make_unique<GLShader>("ColourOnly",ColourOnly_VS,ColourOnly_PS);
-	mShaders.TextureColour = std::make_unique<GLShader>("TextureColour",TextureColour_VS,TextureColour_PS);
 
 	const char *TextureAlphaOnly_PS = R"(
 		varying vec4 v_col;
@@ -1048,24 +1164,25 @@ void Graphics::BuildShaders()
 		}
 	)";
 
-	mShaders.TextureAlphaOnly = std::make_unique<GLShader>("TextureAlphaOnly",TextureColour_VS,TextureAlphaOnly_PS);
-
-	const char* TexturedRoundedRect_VS = R"(
+	const char* RectangleBorder_VS = R"(
 		uniform mat4 u_proj_cam;
+		uniform mat4 u_trans;
 		uniform vec4 u_global_colour;
-		uniform vec4 u_textTrans;
 		attribute vec4 a_xyz;
+		attribute vec4 a_col;
 		varying vec4 v_col;
-		varying vec2 v_tex0;
 		void main(void)
 		{
-			v_col = u_global_colour;
-			v_tex0 = (a_xyz.xy + u_textTrans.xy) * u_textTrans.zw;
-			gl_Position = u_proj_cam * a_xyz;
+			v_col = a_col * u_global_colour;
+			gl_Position = u_proj_cam * (u_trans * a_xyz);
 		}
 	)";
 
-	mShaders.TexturedRoundedRect = std::make_unique<GLShader>("TexturedRoundedRect",TexturedRoundedRect_VS,TextureColour_PS);
+	mShaders.ColourOnly = new GLShader("ColourOnly",ColourOnly_VS,ColourOnly_PS);
+	mShaders.TextureColour = new GLShader("TextureColour",TextureColour_VS,TextureColour_PS);
+	mShaders.TextureAlphaOnly = new GLShader("TextureAlphaOnly",TextureColour_VS,TextureAlphaOnly_PS);
+	mShaders.RectangleBorder = new GLShader("RectangleBorder",RectangleBorder_VS,ColourOnly_PS);
+
 }
 
 void Graphics::EnableShader(GLShaderPtr pShader)
@@ -1074,7 +1191,7 @@ void Graphics::EnableShader(GLShaderPtr pShader)
 	if( mShaders.CurrentShader != pShader )
 	{
 		mShaders.CurrentShader = pShader;
-		pShader->Enable(mMatrices.projection,mMatrices.transform);
+		pShader->Enable(mMatrices.projection,mMatrices.transform,mMatrices.textureTransform);
 	}
 }
 

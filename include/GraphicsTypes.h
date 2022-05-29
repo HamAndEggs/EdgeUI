@@ -163,6 +163,12 @@ struct VertXY
 				BuildQuad(pX,pY,pWidth,pHeight);
 			}
 		}
+
+		const VertXY& operator[](size_t index)const
+		{
+			assert(index < Used());
+			return Data()[index];
+		}
 	};
 };
 

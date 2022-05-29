@@ -32,7 +32,7 @@ class PlatformInterface;
 class GLTexture;
 class GLShader;
 
-typedef std::shared_ptr<GLShader> GLShaderPtr;
+typedef GLShader* GLShaderPtr;
 typedef std::function<bool(int32_t pX,int32_t pY,bool pTouched)> EventTouchScreen;
 
 /**
@@ -204,7 +204,7 @@ protected:
 		GLShaderPtr ColourOnly;
 		GLShaderPtr TextureColour;
 		GLShaderPtr TextureAlphaOnly;
-		GLShaderPtr TexturedRoundedRect;	//!< Custom shader for just textured rounded rectangles.
+		GLShaderPtr RectangleBorder;
 
 		GLShaderPtr CurrentShader;
 	}mShaders;
@@ -214,13 +214,20 @@ protected:
 		float projection[4][4];
 		float transform[4][4];
 		bool transformIsIdentity = false;
+
+		float textureTransform[4][4];
+		bool textureTransformIsIdentity = false;
 	}mMatrices;
 
 	struct RoundedRectData
 	{
 		static const int NUM_POINTS_PER_CORNER = 31;
 		static const int NUM_QUADRANTS = 4;
+		static const int NUM_VERTICES = NUM_POINTS_PER_CORNER * NUM_QUADRANTS;
+		static const int NUM_BOARDER_VERTICES = ((NUM_POINTS_PER_CORNER * NUM_QUADRANTS * 2) + 2);
 		const float ANGLE_INC = GetRadian() / ((float)(NUM_POINTS_PER_CORNER-1) * NUM_QUADRANTS);
+
+		std::vector<eui::Colour> BoarderRaised,BoarderDepressed,BoarderWhite;
 	}mRoundedRect;
 
 	uint32_t mNextFontID = 1;
@@ -258,6 +265,9 @@ protected:
 	 * We're on low end system, sending 16 floats to the gpu for every render is felt.
 	 */
 	void SetTransformIdentity();
+
+	void SetTextureTransform(const float pTransform[4][4]);
+	void SetTextureTransformIdentity();
 
 	/**
 	 * @brief Build the shaders that we need for basic rendering. If you need more copy the code and go multiply :)

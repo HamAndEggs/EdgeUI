@@ -116,7 +116,7 @@ void GLShader::BindAttribLocation(int location,const char* pName)
 	VERBOSE_SHADER_MESSAGE( mName << " AttribLocation("<< pName << "," << location << ")");
 }
 
-void GLShader::Enable(const float projInvcam[4][4],const float pTransform[4][4])
+void GLShader::Enable(const float projInvcam[4][4],const float pTransform[4][4],const float pTextureTransform[4][4])
 {
 #ifdef VERBOSE_SHADER_BUILD
 	gCurrentShaderName = mName;
@@ -130,6 +130,7 @@ void GLShader::Enable(const float projInvcam[4][4],const float pTransform[4][4])
     CHECK_OGL_ERRORS();
 
 	SetTransform(pTransform);
+	SetTextureTransform(pTextureTransform);
 
 	if( mEnableStreamUV )
 	{
@@ -184,11 +185,14 @@ void GLShader::SetTexture(GLint pTexture)
 	CHECK_OGL_ERRORS();
 }
 
-void GLShader::SetTextureTransform(float pTransform[4])
+void GLShader::SetTextureTransform(const float pTransform[4][4])
 {
-	glUniform4f(mUniforms.textureTrans,pTransform[0],pTransform[1],pTransform[2],pTransform[3]);
+	if(mUniforms.textureTrans >= 0 )
+	{
+		glUniformMatrix4fv(mUniforms.textureTrans, 1, false,(const GLfloat*)pTransform);
+		CHECK_OGL_ERRORS();
+	}
 }
-
 
 int GLShader::LoadShader(int type, const char* shaderCode)
 {
