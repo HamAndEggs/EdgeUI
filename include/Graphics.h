@@ -171,7 +171,7 @@ protected:
 	uint32_t mCreateFlags = ROTATE_FRAME_BUFFER_0;
 	bool mKeepGoing = true;								//!< Set to false by the application requesting to exit or the user doing ctrl + c.
 
-	// mPhysical is the atchal width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
+	// mPhysical is the actual width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
 	struct
 	{
 		int Width = 0;
@@ -260,7 +260,7 @@ protected:
 
 	/**
 	 * @brief Set the Transform to an identity
-	 * Because most of the time the transform is an identiy,
+	 * Because most of the time the transform is an identity,
 	 * we us a bool to only set it when it needs to be.
 	 * We're on low end system, sending 16 floats to the gpu for every render is felt.
 	 */

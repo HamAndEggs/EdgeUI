@@ -56,8 +56,6 @@ Element::Element()
 Element::~Element()
 {
     VERBOSE_MESSAGE("Freeing Element: " + mID);
-    delete mExtension;
-    mExtension = nullptr;
     for( auto child : mChildren )
     {
         delete child;
@@ -177,12 +175,6 @@ void Element::SetTextF(const char* pFmt,...)
 	SetText(buf);
 }
 
-void Element::SetExtension(ElementExtension* pExtension)
-{
-    delete mExtension;// Kill the old one.
-    mExtension = pExtension;
-}
-
 void Element::Attach(ElementPtr pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
@@ -200,9 +192,12 @@ void Element::Update()
 {
     if( mActive )
     {
-        if( mExtension )
+        if( OnUpdate() )
+            return;
+
+        if( mOnUpdateCB )
         {
-            if( mExtension->OnUpdate(this) )
+            if( mOnUpdateCB(this) )
                 return;
         }
 
@@ -230,9 +225,12 @@ void Element::Draw(Graphics* pGraphics)
             }
         }
 
-        if( mExtension )
+        if( OnDraw(pGraphics) )
+            return;
+
+        if( mOnDrawCB )
         {
-            if( mExtension->OnDraw(this,pGraphics) )
+            if( mOnDrawCB(this,pGraphics) )
                 return;
         }
 
@@ -248,20 +246,17 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
     const Rectangle contentRect = GetContentRectangle();    
     if( contentRect.ContainsPoint(pX,pY) )
     {
-        if( pTouched )
+        const float localX = pX - contentRect.left;
+        const float localY = pY - contentRect.top;
+        if( OnTouched(localX,localY,pTouched) )
         {
-            // Is it in our rect?
-            if( mExtension )
-            {
-                if( mExtension->OnPressed(this) )
-                {
-                    return true;
-                }
-            }
+            return true;
         }
-        else
-        {
 
+        if( mOnTouchedCB )
+        {
+            if( mOnTouchedCB(this,localX,localY,pTouched) )
+                return true;
         }
     }
 

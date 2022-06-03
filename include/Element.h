@@ -19,27 +19,6 @@ class Graphics;
 typedef Element* ElementPtr;
 
 /**
- * @brief This is an interface class used to allow an application to extend the functionality of an element.
- * When the element that the events object is attached to is deleted so is this object.
- * Don't share an object with more than one element.
- * The event handlers return a bool. Return true to stop the propegation of the event to children.
- * The default code is called before the handler is. So for a graphical element it is drawn before OnDraw is called.
- */
-class ElementExtension
-{
-public:
-
-    ElementExtension() = default;
-    virtual ~ElementExtension() = default;
-
-    virtual bool OnDraw(ElementPtr pElement,Graphics* pGraphics){return false;}
-    virtual bool OnUpdate(ElementPtr pElement){return false;}
-    virtual bool OnPressed(ElementPtr pElement){return false;}
-    virtual bool OnDrag(ElementPtr pElement){return false;}
-    virtual bool OnKey(ElementPtr pElement){return false;}
-};
-
-/**
  * @brief 
  */
 class Element
@@ -103,13 +82,13 @@ public:
     void SetVisible(bool pVisible){mVisible = pVisible;}
     void SetActive(bool pActive){mActive = pActive;}
 
-    void SetExtension(ElementExtension* pExtension);
-
     void Attach(ElementPtr pElement);
     void Remove(ElementPtr pElement);
+
     /**
      * @brief Updates all elements in the tree, if they are visible.
-     * Doing full update before the draw allows all dependacies to have the correct data for rendering.
+     * Doing full update before the draw allows all dependencies to have the correct data for rendering.
+    * Application only calls this on the root, it is propagated to the children.
      */
     void Update();
 
@@ -123,6 +102,25 @@ public:
      */
     bool TouchEvent(float pX,float pY,bool pTouched);
 
+    /**
+     * @brief Override these functions to extend the functionality of a control to build your own element types.
+     * Return true to stop propagation of events to children.
+     */
+    virtual bool OnDraw(Graphics* pGraphics){return false;}
+    virtual bool OnUpdate(){return false;}
+    virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched){return false;}
+
+    /**
+     * @brief As well as using inheritance to change an elements behaviour, we can use dependency injection for more simple control customisation.
+     */
+    typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics)>                        OnDrawCB;
+    typedef std::function<bool (ElementPtr pElement)>                                            OnUpdateCB;
+    typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>  OnTouchedCB;
+
+    void SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;}
+    void SetUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;}
+    void SetTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;}
+
 private:
     ElementPtr mParent = nullptr;
     std::list<ElementPtr> mChildren;
@@ -130,7 +128,7 @@ private:
     std::string mText;                      //!< If set, it is displayed, based on settings in the style.
     int mFont = 0;                          //!< The font to use to render text, if zero, will use parents. Used GetFont to fetch the font to render with.
     bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
-    bool mActive = true;                    //!< If true, will update, if false will not be updated and it's childrent will not be. May still be drawn.
+    bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.
 
     Style mStyle;
     uint32_t mX = 0;
@@ -142,7 +140,11 @@ private:
 
     Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
 
-    ElementExtension* mExtension = nullptr;
+    OnDrawCB mOnDrawCB = nullptr;
+    OnUpdateCB mOnUpdateCB = nullptr;
+    OnTouchedCB mOnTouchedCB = nullptr;
+
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
