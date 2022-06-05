@@ -10,7 +10,6 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glx.h>
-#include <GL/glu.h>
 
 #ifdef PLATFORM_X11_GL
 	#include <GL/glu.h>
