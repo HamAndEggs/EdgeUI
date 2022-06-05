@@ -12,6 +12,10 @@
 #include <GL/glx.h>
 #include <GL/glu.h>
 
+#ifdef PLATFORM_X11_GL
+	#include <GL/glu.h>
+#endif
+
 /**
  * @brief The EdgeUI is targeting systems without a desktop, but sometimes we want to develop on a system with it.
  * This define allows that. But is expected to be used ONLY for development.
