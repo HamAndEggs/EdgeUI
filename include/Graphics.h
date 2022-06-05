@@ -52,14 +52,14 @@ public:
         ROTATE_FRAME_BUFFER_180,
         ROTATE_FRAME_BUFFER_270,
 
-        ROTATE_FRAME_PORTRATE,		//!< If the hardware reports a landscape mode (width > height)  will apply a 90 degree rotation
-        ROTATE_FRAME_LANDSCAPE,		//!< If the hardware reports a portrate mode (width < height) will apply a 90 degree rotation
+        ROTATE_FRAME_PORTRAIT,		//!< If the hardware reports a landscape mode (width > height)  will apply a 90 degree rotation
+        ROTATE_FRAME_LANDSCAPE,		//!< If the hardware reports a portrait mode (width < height) will apply a 90 degree rotation
     };
 
     Graphics(DisplayRotation pDisplayRotation);
     ~Graphics();
 
-    static Graphics* Open(DisplayRotation pDisplayRotation = ROTATE_FRAME_PORTRATE);
+    static Graphics* Open(DisplayRotation pDisplayRotation = ROTATE_FRAME_LANDSCAPE);
     static void      Close();
     static Graphics* Get(); // Will throw an exception if open has not been called.
 

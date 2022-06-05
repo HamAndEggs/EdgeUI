@@ -5,8 +5,15 @@
 #include "GLTexture.h"
 #include "Style.h"
 #include "FreeTypeFont.h"
-#include "PlatformInterface_X11.h"
 #include "TinyPNG.h"
+
+#ifdef PLATFORM_DRM_EGL
+	#include "PlatformInterface_DRM.h"
+#elif defined PLATFORM_X11_GL
+	#include "PlatformInterface_X11.h"
+#else
+	#error "Platform Interface not defined"
+#endif
 
 #include <math.h>
 
@@ -57,16 +64,16 @@ Graphics::Graphics(DisplayRotation pDisplayRotation)
 	mPhysical.Height = mPlatform->GetHeight();
 
 	// They want portait, if hardware display is landscape, rotate 90, else don't.
-	if( pDisplayRotation = ROTATE_FRAME_PORTRATE )
+	if( pDisplayRotation == ROTATE_FRAME_PORTRAIT )
 	{
-		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portate by default.
+		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portrait by default.
 		if( mPhysical.Width > mPhysical.Height )
 		{
 			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is landscape
 		}
 	}
 
-	if( pDisplayRotation = ROTATE_FRAME_LANDSCAPE )
+	if( pDisplayRotation == ROTATE_FRAME_LANDSCAPE )
 	{
 		mCreateFlags = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
 		if( mPhysical.Width < mPhysical.Height )
@@ -450,10 +457,6 @@ void Graphics::FontPrint(uint32_t pFont,const Rectangle& pRect,const Alignment p
 Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)const
 {
 	auto& font = mFreeTypeFonts.at(pFont);
-
-	// Get where the uvs will be written too.
-	const char* ptr = pText.data();
-
 	return font->GetRect(pText);
 }
 

@@ -1,5 +1,5 @@
-#ifndef PLATFORM_INTERFACE_H__
-#define PLATFORM_INTERFACE_H__
+#ifndef PLATFORM_INTERFACE_X11_H__
+#define PLATFORM_INTERFACE_X11_H__
 
 #include "Graphics.h"
 #include "Diagnostics.h"
@@ -44,4 +44,4 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
 
-#endif //#ifndef PLATFORM_INTERFACE_H__
+#endif //#ifndef PLATFORM_INTERFACE_X11_H__
