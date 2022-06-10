@@ -728,6 +728,10 @@ uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bo
             return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered);
         }
     }
+	else
+	{
+		std::clog << "Failed to load PNG: " << pFilename << "\n";
+	}
 
 	return TextureGetDiagnostics();
 }
