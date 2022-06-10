@@ -344,6 +344,7 @@ uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 	FT_Face loadedFace;
 	if( FT_New_Face(mFreetype,pFontName.c_str(),0,&loadedFace) != 0 )
 	{
+		std::cerr << "Failed to load true type font " << pFontName << "\n";
 		THROW_MEANINGFUL_EXCEPTION("Failed to load true type font " + pFontName);
 	}
 
