@@ -23,7 +23,7 @@ static Graphics* theGraphics = nullptr;
 
 struct PNG_LOADER
 {
-	PNG_LOADER():loader(true)
+	PNG_LOADER():loader(false)
 	{
 
 	}
