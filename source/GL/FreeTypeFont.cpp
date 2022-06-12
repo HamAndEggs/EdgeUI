@@ -10,7 +10,11 @@ static bool BuildGlyphIndex = true;
 
 inline int GetGlyphIndex(FT_UInt pCharacter)
 {
-	return GlyphIndex[pCharacter];
+	if( pCharacter < GlyphIndex.size() )
+	{
+		return GlyphIndex[pCharacter];
+	}
+	return -1;
 }
 
 inline FT_UInt GetNextGlyph(const char *& pText)
@@ -335,12 +339,8 @@ void FreeTypeFont::BuildQuads(const char* pText,float pX,float pY,VertXY::Buffer
 	FT_UInt glyph = 0;
 	while( (glyph = GetNextGlyph(pText)) != 0 )
 	{
-		const int index = GetGlyphIndex(glyph);
-		if( index < 0 )
-		{
-			pX += mSpaceAdvance;
-		}
-		else
+		const size_t index = GetGlyphIndex(glyph);
+		if( index < mGlyphs.size() )
 		{
 			auto&g = mGlyphs.at(index);
 
@@ -366,14 +366,10 @@ Rectangle FreeTypeFont::GetRect(const std::string_view& pText)const
 	float x = 0;
 	while( (glyph = GetNextGlyph(text)) != 0 )
 	{
-		const int index = GetGlyphIndex(glyph);
-		if( index < 0 )
+		const size_t index = GetGlyphIndex(glyph);
+		if( index < mGlyphs.size() )
 		{
-			x += mSpaceAdvance;
-		}
-		else
-		{
-			auto&g = mGlyphs.at(index);
+			auto &g = mGlyphs.at(index);
 
 			const float px = x + g.x_off;
 			const float py = g.y_off;
@@ -383,6 +379,10 @@ Rectangle FreeTypeFont::GetRect(const std::string_view& pText)const
 
 			x += g.advance;
 		}
+		else
+		{
+			x += mSpaceAdvance;
+		}			
 	}
 	return r;
 }
