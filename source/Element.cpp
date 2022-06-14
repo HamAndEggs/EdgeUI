@@ -221,7 +221,7 @@ void Element::Draw(Graphics* pGraphics)
             const int font = GetFont();
             if( font > 0 )
             {
-                pGraphics->FontPrint(font,contentRect,mStyle.mAlignment,mStyle.mForground,mText);
+                pGraphics->FontPrint(font,contentRect,mStyle.mAlignment,mStyle.mForeground,mText);
             }
         }
 

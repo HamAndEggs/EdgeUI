@@ -16,7 +16,7 @@ struct Style
         BS_DEPRESSED
     };
 
-    Colour mForground = COLOUR_WHITE;       //!< If alpha is set to zero then forground will not be rendered.
+    Colour mForeground = COLOUR_WHITE;       //!< If alpha is set to zero then foreground will not be rendered.
     Colour mBackground = COLOUR_NONE;       //!< If alpha is set to zero then background will not be rendered.
     Colour mBorder = COLOUR_NONE;           //!< If alpha is set to zero then background will not be rendered.
     float mRadius = 0;                      //!< If background is rendered will give the rectangle rounded edges.
