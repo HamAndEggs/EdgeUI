@@ -5,7 +5,7 @@
 #include "GLTexture.h"
 #include "Style.h"
 #include "FreeTypeFont.h"
-#include "TinyPNG.h"
+#include "../TinyPNG.h"
 
 #ifdef PLATFORM_DRM_EGL
 	#include "PlatformInterface_DRM.h"
