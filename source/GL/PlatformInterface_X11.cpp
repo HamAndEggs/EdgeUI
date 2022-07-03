@@ -5,9 +5,6 @@
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-/**
- * @brief The TinyGLES codebase is expected to be used for a system not running X11. But to aid development there is an option to 'emulate' a frame buffer with an X11 window.
- */
 PlatformInterface::PlatformInterface():
 	mXDisplay(NULL),
 	mWindow(0),
@@ -93,7 +90,7 @@ void PlatformInterface::InitialiseDisplay()
 					mXDisplay,
 					RootWindow(mXDisplay, mVisualInfo->screen),
 					10, 10,
-					X11_EMULATION_WIDTH, X11_EMULATION_HEIGHT,
+					DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT,
 					0, mVisualInfo->depth, InputOutput, mVisualInfo->visual,
 					CWBorderPixel|CWColormap|CWEventMask,
 					&mWindowAttributes );

@@ -11,6 +11,8 @@
 	#include "PlatformInterface_DRM.h"
 #elif defined PLATFORM_X11_GL
 	#include "PlatformInterface_X11.h"
+#elif defined PLATFORM_WAYLAND_GL
+	#include "PlatformInterface_Wayland.h"
 #else
 	#error "Platform Interface not defined"
 #endif

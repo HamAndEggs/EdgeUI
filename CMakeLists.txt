@@ -28,6 +28,21 @@ if( CMAKE_BUILD_TYPE STREQUAL Debug)
     target_compile_definitions(EdgeUI.X11 PUBLIC -DVERBOSE_BUILD -DVERBOSE_SHADER_BUILD)
 endif( CMAKE_BUILD_TYPE STREQUAL Debug)
 
+#*************** Wayland Target
+add_library(EdgeUI.Wayland ${SOURCE_FILES})
+set_property(TARGET EdgeUI.Wayland PROPERTY CXX_STANDARD 17)
+target_compile_definitions(EdgeUI.Wayland PUBLIC -DPLATFORM_WAYLAND_GL)
+target_sources(EdgeUI.Wayland PUBLIC
+    source/GL/FreeTypeFont.cpp
+    source/GL/GLDiagnostics.cpp
+    source/GL/GLShader.cpp
+    source/GL/Graphics_GL.cpp
+    source/GL/PlatformInterface_Wayland.cpp
+)
+if( CMAKE_BUILD_TYPE STREQUAL Debug)
+    target_compile_definitions(EdgeUI.X11 PUBLIC -DVERBOSE_BUILD -DVERBOSE_SHADER_BUILD)
+endif( CMAKE_BUILD_TYPE STREQUAL Debug)
+
 
 #*************** Direct render manager (DRM) Target
 add_library(EdgeUI.DRM ${SOURCE_FILES})

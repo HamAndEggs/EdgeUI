@@ -28,8 +28,8 @@ public:
 	 */
 	void SwapBuffers();
 
-	int GetWidth()const{return X11_EMULATION_WIDTH;}
-	int GetHeight()const{return X11_EMULATION_HEIGHT;}
+	int GetWidth()const{return DESKTOP_EMULATION_WIDTH;}
+	int GetHeight()const{return DESKTOP_EMULATION_HEIGHT;}
 
 private:
 	Display *mXDisplay = nullptr;
