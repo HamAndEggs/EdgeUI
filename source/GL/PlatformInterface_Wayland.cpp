@@ -60,7 +60,7 @@ void PlatformInterface::InitialiseDisplay()
 	VERBOSE_MESSAGE("Got wayland display !");
 
 	struct wl_registry *wl_registry = wl_display_get_registry(mEGL.native_display);
-	wl_registry_add_listener(wl_registry, &WaylandListeners, NULL);
+	wl_registry_add_listener(wl_registry, &WaylandListeners, this);
 
 	// This call the attached WaylandListeners global_registry_handler
 	wl_display_dispatch(mEGL.native_display);
@@ -69,7 +69,7 @@ void PlatformInterface::InitialiseDisplay()
 	// If at this point, global_registry_handler didn't set the 
 	// compositor, nor the shell, bailout !
 	// mWayland.compositor is set in the registered handler.
-	if (mWayland.compositor == NULL || mWayland.shell == NULL)
+	if (mWayland.compositor == NULL ) /* || mWayland.shell == NULL)*/
 	{
 		THROW_MEANINGFUL_EXCEPTION("No compositor !? No Shell !! There's NOTHING in here !\n");
 	}
@@ -83,13 +83,21 @@ void PlatformInterface::InitialiseDisplay()
 	}
 
 	VERBOSE_MESSAGE("Got a compositor surface !");
+	/*
 	mWayland.shell_surface = wl_shell_get_shell_surface(mWayland.shell, mWayland.surface);
-	wl_shell_surface_set_toplevel(mWayland.shell_surface);
+	wl_shell_surface_set_toplevel(mWayland.shell_surface);*/
 
 	mWayland.region = wl_compositor_create_region(mWayland.compositor);
 
 	wl_region_add(mWayland.region, 0, 0, GetWidth(), GetHeight());
 	wl_surface_set_opaque_region(mWayland.surface, mWayland.region);
+
+	wl_surface_commit(mWayland.surface);
+	wl_display_roundtrip(mEGL.native_display);
+
+//	wl_surface_attach(mWayland.surface, buffer, 0, 0);
+//	wl_surface_commit(mWayland.surface);
+
 
 	mEGL.native_window = wl_egl_window_create(mWayland.surface, GetWidth(), GetHeight());
 
@@ -104,7 +112,10 @@ void PlatformInterface::InitialiseDisplay()
 
 void PlatformInterface::ProcessEvents(EventTouchScreen pTouchEvent,std::function<void()> pEventQuit)
 {
-	wl_display_dispatch_pending(mEGL.native_display);
+	if( wl_display_dispatch(mEGL.native_display) == -1 )
+	{
+		pEventQuit();
+	}
 }
 
 void PlatformInterface::SwapBuffers()
@@ -117,14 +128,30 @@ void PlatformInterface::RegistryHandler(struct wl_registry *registry, uint32_t i
 	if( strcmp(interface,wl_compositor_interface.name) == 0)
 	{
 		mWayland.compositor = (wl_compositor *)wl_registry_bind(registry, id, &wl_compositor_interface, 1);
+		if( mWayland.compositor == NULL )
+		{
+			THROW_MEANINGFUL_EXCEPTION("wl_registry_bind failed for wl_compositor_interface");
+		}
+		else
+		{
+			VERBOSE_MESSAGE("We have the compositor");
+		}
 	}
 	else if( strcmp(interface,wl_shell_interface.name) == 0 )
 	{
-		mWayland.shell = (wl_shell*)wl_registry_bind(registry, id, &wl_shell_interface, 1);
+/*		mWayland.shell = (wl_shell*)wl_registry_bind(registry, id, &wl_shell_interface, 1);
+		if( mWayland.shell == NULL )
+		{
+			THROW_MEANINGFUL_EXCEPTION("wl_registry_bind failed for wl_shell_interface");
+		}
+		else
+		{
+			VERBOSE_MESSAGE("We have the shell");
+		}*/
 	}
 	else
 	{
-		VERBOSE_MESSAGE("RegistryHandler: Unhandled event " << interface << " for ID " << id);
+		VERBOSE_MESSAGE("RegistryHandler: event " << interface << " for ID " << id);
 	}
 }
 

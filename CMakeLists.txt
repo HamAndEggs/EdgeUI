@@ -40,7 +40,7 @@ target_sources(EdgeUI.Wayland PUBLIC
     source/GL/PlatformInterface_Wayland.cpp
 )
 if( CMAKE_BUILD_TYPE STREQUAL Debug)
-    target_compile_definitions(EdgeUI.X11 PUBLIC -DVERBOSE_BUILD -DVERBOSE_SHADER_BUILD)
+    target_compile_definitions(EdgeUI.Wayland PUBLIC -DVERBOSE_BUILD -DVERBOSE_SHADER_BUILD)
 endif( CMAKE_BUILD_TYPE STREQUAL Debug)
 
 

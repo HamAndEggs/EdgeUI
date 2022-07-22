@@ -52,8 +52,8 @@ private:
 	{
 		struct wl_compositor *compositor = nullptr;
 		struct wl_surface *surface = nullptr;
-		struct wl_shell *shell = nullptr;
-		struct wl_shell_surface *shell_surface = nullptr;
+//		struct wl_shell *shell = nullptr;
+//		struct wl_shell_surface *shell_surface = nullptr;
 		struct wl_egl_window *EGLWindow = nullptr;
 		struct wl_region *region = nullptr;
 	}mWayland;

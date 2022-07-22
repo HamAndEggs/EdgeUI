@@ -201,7 +201,7 @@ int GLShader::LoadShader(int type, const char* shaderCode)
 	int shaderFrag = glCreateShader(type);
 
 	// If we're GLES system we need to add "precision highp float"
-#ifdef PLATFORM_DRM_EGL
+#if defined PLATFORM_DRM_EGL || defined PLATFORM_WAYLAND_GL
 	const std::string glesShaderCode= std::string("precision highp float; ") + shaderCode;
 	shaderCode = glesShaderCode.c_str();
 #endif
