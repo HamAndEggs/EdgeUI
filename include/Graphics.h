@@ -28,12 +28,10 @@ enum struct TextureFormat
 
 struct Style;
 struct FreeTypeFont;
-class PlatformInterface;
 class GLTexture;
 class GLShader;
 
 typedef GLShader* GLShaderPtr;
-typedef std::function<bool(int32_t pX,int32_t pY,bool pTouched)> EventTouchScreen;
 
 /**
  * @brief This is the interface definition to a facade this is implemented by the hardware (GPU) renderer chosen, for example GL. 
@@ -56,12 +54,9 @@ public:
         ROTATE_FRAME_LANDSCAPE,		//!< If the hardware reports a portrait mode (width < height) will apply a 90 degree rotation
     };
 
-    Graphics(DisplayRotation pDisplayRotation);
-    ~Graphics();
+	static Graphics* Get(); // Will throw an exception if not ready.
 
-    static Graphics* Open(DisplayRotation pDisplayRotation = ROTATE_FRAME_LANDSCAPE);
-    static void      Close();
-    static Graphics* Get(); // Will throw an exception if open has not been called.
+    virtual ~Graphics();
 
     /**
      * @brief Get the display rectangle
@@ -72,7 +67,7 @@ public:
 
     int32_t GetDisplayHeight()const;
 
-	bool GetIsPortate(){return mCreateFlags == ROTATE_FRAME_BUFFER_90 || mCreateFlags == ROTATE_FRAME_BUFFER_270;}
+	bool GetIsPortrait(){return mCreateFlags == ROTATE_FRAME_BUFFER_90 || mCreateFlags == ROTATE_FRAME_BUFFER_270;}
 
     /**
      * @brief Builds a set of points that can be used for drawing a rounded rectangle with lines or polygons.
@@ -84,29 +79,15 @@ public:
      */
     void GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius,float pSize);
 
+	void SetDisplayRotation(DisplayRotation pDisplayRotation);
+
 	/**
 	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
 	 * You would typically call this from a UI button to quit the app.
 	 */
 	void SetExitRequest(){mExitRequest = true;};
 
-	/**
-	 * @brief Marks the start of the frame.
-	 */
-	void BeginFrame();
-
-	/**
-	 * @brief Called at the end of the rendering phase. Normally last part line in the while loop.
-	 */
-	void EndFrame();
-
-    /**
-     * @brief Processes system events and call the touch event when the display is 'touched'
-     * For X11 implemention touch is emulated with the mouse.
-	 * @return true All is ok, so keep running.
-	 * @return false Either the user requested an exit with ctrl+c or there was an error.
-     */
-    bool ProcessSystemEvents(EventTouchScreen mTouchEvent);
+	virtual void SetUpdateFrequency(uint32_t pMilliseconds) = 0;
 
     uint32_t FontLoad(const std::string& pFontName,int pPixelHeight = 40);
     void FontDelete(uint32_t pFont);
@@ -187,7 +168,6 @@ protected:
 
 	std::unique_ptr<struct PNG_LOADER>mPNG;
 
-	std::unique_ptr<PlatformInterface> mPlatform;				//!< This is all the data needed to drive the rendering platform that this code sits on and used to render with.
 	std::map<uint32_t,std::unique_ptr<GLTexture>> mTextures; 	//!< Our textures. I reuse the GL texture index (handle) for my own. A handy value and works well.
 
 	/**
@@ -235,6 +215,19 @@ protected:
 	std::map<uint32_t,std::unique_ptr<FreeTypeFont>> mFreeTypeFonts;
 
 	FT_Library mFreetype = nullptr;
+
+    Graphics();
+	void InitialiseGL(int pWidth,int pHeight);
+
+	/**
+	 * @brief Marks the start of the frame.
+	 */
+	void BeginFrame();
+
+	/**
+	 * @brief Called at the end of the rendering phase. Normally last part line in the while loop.
+	 */
+	void EndFrame();
 
 	/**
 	 * @brief Sets some common rendering states for a nice starting point.

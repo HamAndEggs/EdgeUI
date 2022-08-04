@@ -1,15 +1,111 @@
-
-#include "PlatformInterface_DRM.h"
 #include "GLDiagnostics.h"
+#include "Graphics.h"
+#include "Element.h"
 
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <linux/input.h>
 
+// This is for linux systems that have no window manager. Like RPi4 running their light version of raspbian or a distro built with Yocto.
+// sudo apt install libdrm libdrm-dev libegl-dev libgles2-mesa-dev
+
+#include <xf86drm.h> // sudo apt install libdrm-dev
+#include <xf86drmMode.h>
+#include <gbm.h>	// sudo apt install libgbm-dev // This is used to get the egl stuff going. DRM is used to do the page flip to the display. Goes.. DRM -> GDM -> GLES (I think)
+#include <drm_fourcc.h>
+#include "EGL/egl.h" // sudo apt install libegl-dev
+//#include "GLES2/gl2.h" // sudo apt install libgles2-mesa-dev
+
+#define EGL_NO_X11
+#define MESA_EGL_NO_X11_HEADERS
+
+static int g_argc;
+static const char **g_argv;
+
 namespace eui{
-///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-PlatformInterface::PlatformInterface()
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+class Graphics_DRM : public Graphics
+{
+public:
+	Graphics_DRM();
+	virtual ~Graphics_DRM();
+
+	void InitialiseDisplay();
+
+	int GetWidth()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->hdisplay;}return 0;}
+	int GetHeight()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->vdisplay;}return 0;}
+
+	virtual void SetUpdateFrequency(uint32_t pMilliseconds){};
+
+	void Run();
+
+private:
+
+	bool mIsFirstFrame = true;
+	int mDRMFile = -1;
+
+	// This is used for the EGL bring up and getting GLES going along with DRM.
+	struct gbm_device *mBufferManager = nullptr;
+	struct gbm_bo *mCurrentFrontBufferObject = nullptr;
+
+	drmModeEncoder *mModeEncoder = nullptr;
+	drmModeConnector* mConnector = nullptr;
+	drmModeModeInfo* mModeInfo = nullptr;
+	uint32_t mFOURCC_Format = DRM_FORMAT_INVALID;
+	uint32_t mCurrentFrontBufferID = 0;
+
+	EGLDisplay mDisplay = nullptr;				//!<GL display
+	EGLSurface mSurface = nullptr;				//!<GL rendering surface
+	EGLContext mContext = nullptr;				//!<GL rendering context
+	EGLConfig mConfig = nullptr;				//!<Configuration of the display.
+
+	struct gbm_surface *mNativeWindow = nullptr;
+	eui::ElementPtr mMainScreen = nullptr;
+
+	/**
+	 * @brief Information about the mouse driver
+	 */
+	struct
+	{
+		int mDevice = 0; //!< File handle to /dev/input/mice
+
+		/**
+		 * @brief Maintains the current known values. Because we get many messages.
+		 */
+		struct
+		{
+			bool touched = false;
+			int x = 0;
+			int y = 0;
+		}mCurrent;
+	}mPointer;
+
+	/**
+	 * @brief Looks for a mouse device we can used for touch screen input.
+	 * 
+	 * @return int 
+	 */
+	int FindMouseDevice();
+
+	void FindEGLConfiguration();
+	void UpdateCurrentBuffer();
+	void ProcessEvents();
+	void SwapBuffers();
+
+};
+
+static Graphics_DRM* theGraphics = nullptr;
+Graphics* Graphics::Get()
+{
+	if( theGraphics == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
+	}
+	return theGraphics;
+}
+
+Graphics_DRM::Graphics_DRM()
 {
 	mPointer.mDevice = FindMouseDevice();
 
@@ -74,12 +170,24 @@ PlatformInterface::PlatformInterface()
 		}
 	}
 
+	// Did'nt find a 'preferred' type, so pick first one.
+	if( mModeInfo == nullptr && connector->count_modes > 0 )
+	{
+		mModeInfo = &connector->modes[0];
+		VERBOSE_MESSAGE("NON-Preferred screen mode used");
+	}
+
+	if( mModeInfo == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed to find mode info");
+	}
+
 	if( GetWidth() == 0 || GetHeight() == 0 )
 	{
 		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed to find screen mode");
 	}
 
-	// Now grab the encoder, we need it for the CRTC ID. This is display connected to the conector.
+	// Now grab the encoder, we need it for the CRTC ID. This is display connected to the connector.
 	for( int n = 0 ; n < resources->count_encoders && mModeEncoder == nullptr ; n++ )
 	{
 		drmModeEncoder *encoder = drmModeGetEncoder(mDRMFile, resources->encoders[n]);
@@ -93,11 +201,15 @@ PlatformInterface::PlatformInterface()
 		}
 	}
 
-	drmModeFreeResources(resources);	
+	drmModeFreeResources(resources);
+
+	InitialiseDisplay();
 }
 
-PlatformInterface::~PlatformInterface()
+Graphics_DRM::~Graphics_DRM()
 {
+	delete mMainScreen;
+
 	VERBOSE_MESSAGE("Destroying context");
 	eglDestroyContext(mDisplay, mContext);
     eglDestroySurface(mDisplay, mSurface);
@@ -112,7 +224,7 @@ PlatformInterface::~PlatformInterface()
 	close(mPointer.mDevice);
 }
 
-int PlatformInterface::FindMouseDevice()
+int Graphics_DRM::FindMouseDevice()
 {
 	for( int n = 0 ; n < 16 ; n++ )
 	{
@@ -179,18 +291,8 @@ int PlatformInterface::FindMouseDevice()
 	return 0;
 }
 
-void PlatformInterface::ProcessEvents(EventTouchScreen pTouchEvent,std::function<void()> pEventQuit)
+void Graphics_DRM::ProcessEvents()
 {
-	if( pTouchEvent == nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("The DRM touch event handler in ProcessEvents is null");
-	}
-
-	if( pEventQuit == nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("The DRM quit event handler in ProcessEvents is null");
-	}
-
 	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
 	if( mPointer.mDevice > 0 )
 	{
@@ -212,7 +314,7 @@ void PlatformInterface::ProcessEvents(EventTouchScreen pTouchEvent,std::function
 				{
 				case BTN_TOUCH:
 					mPointer.mCurrent.touched = (ev.value != 0);
-					pTouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+					mMainScreen->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
 					break;
 				}
 				break;
@@ -228,7 +330,7 @@ void PlatformInterface::ProcessEvents(EventTouchScreen pTouchEvent,std::function
 					mPointer.mCurrent.y = ev.value;
 					break;
 				}
-				pTouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+				mMainScreen->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
 				break;
 			}
 		}
@@ -236,7 +338,7 @@ void PlatformInterface::ProcessEvents(EventTouchScreen pTouchEvent,std::function
 	
 }
 
-void PlatformInterface::InitialiseDisplay()
+void Graphics_DRM::InitialiseDisplay()
 {
 	VERBOSE_MESSAGE("Calling DRM InitialiseDisplay");
 
@@ -275,9 +377,11 @@ void PlatformInterface::InitialiseDisplay()
 
 	eglMakeCurrent(mDisplay, mSurface, mSurface, mContext );
 	CHECK_OGL_ERRORS();
+
+	InitialiseGL(GetWidth(), GetHeight());
 }
 
-void PlatformInterface::FindEGLConfiguration()
+void Graphics_DRM::FindEGLConfiguration()
 {
 	int depths_32_to_16[3] = {32,24,16};
 
@@ -351,7 +455,7 @@ static void drm_fb_destroy_callback(struct gbm_bo *bo, void *data)
 	delete user_data;
 }
 
-void PlatformInterface::UpdateCurrentBuffer()
+void Graphics_DRM::UpdateCurrentBuffer()
 {
 	assert(mNativeWindow);
 	mCurrentFrontBufferObject = gbm_surface_lock_front_buffer(mNativeWindow);
@@ -389,7 +493,7 @@ static void page_flip_handler(int fd, unsigned int frame, unsigned int sec, unsi
 	*((bool*)data) = 0;	// Set flip flag to false
 }
 
-void PlatformInterface::SwapBuffers()
+void Graphics_DRM::SwapBuffers()
 {
 	eglSwapBuffers(mDisplay,mSurface);
 
@@ -435,7 +539,7 @@ void PlatformInterface::SwapBuffers()
 		if( ret < 0 )
 		{
 			// I wanted this to be an exception but could not, see comment on the select. So just cout::error for now...	
-			std::cerr << "PlatformInterface::SwapBuffer select on DRM file failed to queue page flip " << std::string(strerror(errno)) << "\n";
+			std::cerr << "Graphics_DRM::SwapBuffer select on DRM file failed to queue page flip " << std::string(strerror(errno)) << "\n";
 		}
 
 		drmHandleEvent(mDRMFile, &evctx);
@@ -444,5 +548,53 @@ void PlatformInterface::SwapBuffers()
 	gbm_surface_release_buffer(mNativeWindow,mCurrentFrontBufferObject);
 }
 
+void Graphics_DRM::Run()
+{
+	mMainScreen = eui::Element::AllocateUI(g_argc,g_argv,this);
+
+	while(mKeepGoing)
+	{
+		ProcessEvents();
+		assert( mMainScreen );
+		mMainScreen->Update();
+		BeginFrame();
+		mMainScreen->Draw(this);
+		EndFrame();
+		SwapBuffers();
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
+
+int main(const int argc,const char *argv[])
+{
+	g_argc = argc;
+	g_argv = argv;
+
+//    // Use dependency injection to pass events onto the controls.
+//    // This means that we don't need a circular header dependency that can make it hard to port code.
+//    // I do not want graphics.h including element.h as element.h already includes graphics.h
+//    auto touchEventHandler = [mainScreen](int32_t pX,int32_t pY,bool pTouched)
+//    {
+//        return mainScreen->TouchEvent(pX,pY,pTouched);
+//    };
+
+
+
+
+//    while( graphics->ProcessSystemEvents(touchEventHandler) )
+//    {
+//
+//        // Check again in a second. Not doing big wait here as I need to be able to quit in a timely fashion.
+//        // Also OS could correct display. But one second means system not pegged 100% rendering as fast as possible.
+//        sleep(1);
+//    }
+
+	eui::theGraphics = new eui::Graphics_DRM;
+	eui::theGraphics->Run();
+	delete eui::theGraphics;
+	eui::theGraphics = nullptr;
+
+    return EXIT_SUCCESS;
+}

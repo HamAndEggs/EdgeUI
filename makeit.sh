@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 function Message()
 {
 	if [ -z "$2" ]; then
+    
         echo -e "$GREEN$1$NC"
     else
         echo -e "$1$2$NC"
@@ -23,14 +24,16 @@ function Message()
 # ************************
 # Our code
 # ************************
+rm -drf ./build
 
 cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
 cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 
-cmake --build build/debug --target EdgeUI.X11 -- -j8
+# cmake --build build/debug --target EdgeUI.X11 -- -j8
+# cmake --build build/release --target EdgeUI.X11 -- -j8
+# 
 cmake --build build/debug --target EdgeUI.DRM -- -j8
-cmake --build build/debug --target EdgeUI.Wayland -- -j8
-
-cmake --build build/release --target EdgeUI.X11 -- -j8
-cmake --build build/release --target EdgeUI.DRM -- -j8
-cmake --build build/release --target EdgeUI.Wayland -- -j8
+#cmake --build build/release --target EdgeUI.DRM -- -j8
+# 
+# cmake --build build/debug --target EdgeUI.GTK -- -j8
+# cmake --build build/release --target EdgeUI.GTK -- -j8

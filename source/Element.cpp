@@ -271,5 +271,34 @@ bool Element::TouchEvent(float pX,float pY,bool pTouched)
     return false;
 }
 
+bool Element::KeyboardEvent(char pCharacter,bool pPressed)
+{
+//    const Rectangle contentRect = GetContentRectangle();
+//    if( contentRect.ContainsPoint(pX,pY) ) TODO: Make it send this char to selected element...
+    {
+        if( OnKeyboard(pCharacter,pPressed) )
+        {
+            return true;
+        }
+
+        if( mOnKeyboardCB )
+        {
+            if( mOnKeyboardCB(this,pCharacter,pPressed) )
+                return true;
+        }
+    }
+
+    for( auto& e : mChildren )
+    {
+        if( e->KeyboardEvent(pCharacter,pPressed) )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{

@@ -5,6 +5,10 @@
 #include "Diagnostics.h"
 #include "GLIncludes.h"
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <GL/glu.h>
+
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 class PlatformInterface

@@ -24,8 +24,16 @@ typedef Element* ElementPtr;
 class Element
 {
 public:
+    // You have to implement this function in your code to allow the EdgeUI begin.
+    // This is the entry point for your application.
+    // The framework calls this, you do not!
+    // static eui::ElementPtr eui::Element::AllocateUI(const int argc,const char *argv[],eui::Graphics* pGraphics)
+    // {
+    //     return new MyUI(argc,argv,pGraphics); // MyUI is your derived class.
+    // }
+    static ElementPtr AllocateUI(const int argc,const char *argv[],Graphics* pGraphics);
 
-    static ElementPtr Create(const Style& pStyle = Style());
+    ElementPtr Create(const Style& pStyle = Style());
 
     /**
      * @brief 
@@ -103,12 +111,20 @@ public:
     bool TouchEvent(float pX,float pY,bool pTouched);
 
     /**
+     * @brief When a key is pressed or released.
+     * TODO: Needs to deal with 'selected' controls.
+     * Will return true if handled, will call all children until one handles it if it did not handle it.
+     */
+    bool KeyboardEvent(char pCharacter,bool pPressed);
+
+    /**
      * @brief Override these functions to extend the functionality of a control to build your own element types.
      * Return true to stop propagation of events to children.
      */
     virtual bool OnDraw(Graphics* pGraphics){return false;}
     virtual bool OnUpdate(){return false;}
     virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched){return false;}
+    virtual bool OnKeyboard(char pCharacter,bool pPressed){return false;}
 
     /**
      * @brief As well as using inheritance to change an elements behaviour, we can use dependency injection for more simple control customisation.
@@ -116,10 +132,12 @@ public:
     typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics)>                        OnDrawCB;
     typedef std::function<bool (ElementPtr pElement)>                                            OnUpdateCB;
     typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>  OnTouchedCB;
+    typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>              OnKeyboardCB;
 
     void SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;}
-    void SetUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;}
-    void SetTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;}
+    void SetOnUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;}
+    void SetOnTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;}
+    void SetOnKeyboard(OnKeyboardCB pOnKeyboardCB){mOnKeyboardCB = pOnKeyboardCB;}
 
 private:
     ElementPtr mParent = nullptr;
@@ -143,6 +161,7 @@ private:
     OnDrawCB mOnDrawCB = nullptr;
     OnUpdateCB mOnUpdateCB = nullptr;
     OnTouchedCB mOnTouchedCB = nullptr;
+    OnKeyboardCB mOnKeyboardCB = nullptr;
 
 
 };

@@ -7,22 +7,10 @@
 #include "FreeTypeFont.h"
 #include "../TinyPNG.h"
 
-#ifdef PLATFORM_DRM_EGL
-	#include "PlatformInterface_DRM.h"
-#elif defined PLATFORM_X11_GL
-	#include "PlatformInterface_X11.h"
-#elif defined PLATFORM_WAYLAND_GL
-	#include "PlatformInterface_Wayland.h"
-#else
-	#error "Platform Interface not defined"
-#endif
-
 #include <math.h>
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-static Graphics* theGraphics = nullptr;
-
 struct PNG_LOADER
 {
 	PNG_LOADER():loader(false)
@@ -33,79 +21,9 @@ struct PNG_LOADER
 	std::vector<uint8_t> pixelBuffer;
 };
 
-Graphics* Graphics::Open(DisplayRotation pDisplayRotation)
+Graphics::Graphics()
 {
-	if( theGraphics != nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Graphics engine all ready allocated. Please only call Graphics::Open once");
-	}
-    theGraphics = new Graphics(pDisplayRotation);
-	return theGraphics;
-}
-
-void Graphics::Close()
-{
-	delete theGraphics;
-	theGraphics = nullptr;
-}
-
-Graphics* Graphics::Get()
-{
-	if( theGraphics == nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
-	}
-	return theGraphics;
-}
-
-Graphics::Graphics(DisplayRotation pDisplayRotation)
-{
-    mPlatform = std::make_unique<PlatformInterface>();
 	mPNG = std::make_unique<PNG_LOADER>();
-	mPhysical.Width = mPlatform->GetWidth();
-	mPhysical.Height = mPlatform->GetHeight();
-
-	// They want portait, if hardware display is landscape, rotate 90, else don't.
-	if( pDisplayRotation == ROTATE_FRAME_PORTRAIT )
-	{
-		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portrait by default.
-		if( mPhysical.Width > mPhysical.Height )
-		{
-			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is landscape
-		}
-	}
-
-	if( pDisplayRotation == ROTATE_FRAME_LANDSCAPE )
-	{
-		mCreateFlags = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
-		if( mPhysical.Width < mPhysical.Height )
-		{
-			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is portrait
-		}
-	}
-
-	if( GetIsPortate() )
-	{
-		mReported.Width = mPhysical.Height;
-		mReported.Height = mPhysical.Width;
-	}
-	else
-	{
-		mReported.Width = mPhysical.Width;
-		mReported.Height = mPhysical.Height;
-	}
-
-	VERBOSE_MESSAGE("Physical display resolution is " << mPhysical.Width << "x" << mPhysical.Height );
-
-	mPlatform->InitialiseDisplay();
-
-	SetRenderingDefaults();
-	BuildShaders();
-	BuildDebugTexture();
-	InitFreeTypeFont();
-	InitRoundedRect();
-
-	VERBOSE_MESSAGE("GLES Ready");
 }
 
 Graphics::~Graphics()
@@ -154,6 +72,7 @@ Graphics::~Graphics()
 	VERBOSE_MESSAGE("All done");
 }
 
+
 Rectangle Graphics::GetDisplayRect()const
 {
     return Rectangle(0,0,GetDisplayWidth(),GetDisplayHeight());
@@ -161,12 +80,12 @@ Rectangle Graphics::GetDisplayRect()const
 
 int32_t Graphics::GetDisplayWidth()const
 {
-    return mPlatform->GetWidth();
+    return mReported.Width;
 }
 
 int32_t Graphics::GetDisplayHeight()const
 {
-    return mPlatform->GetHeight();
+    return mReported.Height;
 }
 
 void Graphics::GetRoundedRectanglePoints(const Rectangle& pRect,VertXY::Buffer& rBuffer,float pRadius)
@@ -307,38 +226,38 @@ void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::B
 	verts[1] = first[1];
 }
 
-void Graphics::BeginFrame()
+void Graphics::SetDisplayRotation(DisplayRotation pDisplayRotation)
 {
-	mDiagnostics.frameNumber++;
+	// They want portrait, if hardware display is landscape, rotate 90, else don't.
+	if( pDisplayRotation == ROTATE_FRAME_PORTRAIT )
+	{
+		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portrait by default.
+		if( mPhysical.Width > mPhysical.Height )
+		{
+			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is landscape
+		}
+	}
 
-	const float Identity[4][4] ={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+	if( pDisplayRotation == ROTATE_FRAME_LANDSCAPE )
+	{
+		mCreateFlags = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
+		if( mPhysical.Width < mPhysical.Height )
+		{
+			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is portrait
+		}
+	}
 
-	// Force identity transform matrix.
-	mMatrices.transformIsIdentity = true;
-	memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
+	if( GetIsPortrait() )
+	{
+		mReported.Width = mPhysical.Height;
+		mReported.Height = mPhysical.Width;
+	}
+	else
+	{
+		mReported.Width = mPhysical.Width;
+		mReported.Height = mPhysical.Height;
+	}
 
-	mMatrices.textureTransformIsIdentity = true;
-	memcpy(mMatrices.textureTransform,Identity,sizeof(float) * 4 * 4);
-
-	// Reset some items so that we have a working render setup to begin the frame with.
-	// This is done so that I don't have to have a load of if statements to deal with first frame. Also makes life simpler for the more minimal applications.
-	EnableShader(mShaders.ColourOnly);
-}
-
-void Graphics::EndFrame()
-{
-	glFlush();// This makes sure the display is fully up to date before we allow them to interact with any kind of UI. This is the specified use of this function.
-	mPlatform->SwapBuffers();
-}
-
-bool Graphics::ProcessSystemEvents(EventTouchScreen mTouchEvent)
-{
-    mPlatform->ProcessEvents(mTouchEvent,[this]()
-    {
-        mExitRequest = true;
-    });
-
-    return mExitRequest == false;
 }
 
 uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
@@ -883,6 +802,47 @@ int Graphics::TextureGetWidth(uint32_t pTexture)const
 int Graphics::TextureGetHeight(uint32_t pTexture)const
 {
 	return mTextures.at(pTexture)->mHeight;
+}
+
+void Graphics::InitialiseGL(int pWidth,int pHeight)
+{
+	mPhysical.Width = pWidth;
+	mPhysical.Height = pHeight;
+
+	SetDisplayRotation(ROTATE_FRAME_LANDSCAPE);
+
+	VERBOSE_MESSAGE("Physical display resolution is " << mPhysical.Width << "x" << mPhysical.Height );
+
+	SetRenderingDefaults();
+	BuildShaders();
+	BuildDebugTexture();
+	InitFreeTypeFont();
+	InitRoundedRect();
+
+	VERBOSE_MESSAGE("GLES Ready");
+}
+
+void Graphics::BeginFrame()
+{
+	mDiagnostics.frameNumber++;
+
+	const float Identity[4][4] ={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+
+	// Force identity transform matrix.
+	mMatrices.transformIsIdentity = true;
+	memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
+
+	mMatrices.textureTransformIsIdentity = true;
+	memcpy(mMatrices.textureTransform,Identity,sizeof(float) * 4 * 4);
+
+	// Reset some items so that we have a working render setup to begin the frame with.
+	// This is done so that I don't have to have a load of if statements to deal with first frame. Also makes life simpler for the more minimal applications.
+	EnableShader(mShaders.ColourOnly);
+}
+
+void Graphics::EndFrame()
+{
+	glFlush();// This makes sure the display is fully up to date before we allow them to interact with any kind of UI. This is the specified use of this function.
 }
 
 void Graphics::SetRenderingDefaults()

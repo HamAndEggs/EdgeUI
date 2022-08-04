@@ -11,6 +11,8 @@
 
 #define THROW_MEANINGFUL_EXCEPTION(THE_MESSAGE__)	{throw std::runtime_error("At: " + std::to_string(__LINE__) + " In " + std::string(__FILE__) + " : " + std::string(THE_MESSAGE__));}
 
+#define LOG_FUNCTION_PROGRESS   {std::clog << __PRETTY_FUNCTION__ << ":" << __LINE__ << "\n";}
+
 inline std::string GetClassName(const std::string& prettyFunction)
 {
     size_t colons = prettyFunction.find_last_of("::");
