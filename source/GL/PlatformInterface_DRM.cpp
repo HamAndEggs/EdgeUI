@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <linux/input.h>
 
+#include <chrono>
+#include <thread>
+
 // This is for linux systems that have no window manager. Like RPi4 running their light version of raspbian or a distro built with Yocto.
 // sudo apt install libdrm libdrm-dev libegl-dev libgles2-mesa-dev
 
@@ -36,7 +39,7 @@ public:
 	int GetWidth()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->hdisplay;}return 0;}
 	int GetHeight()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->vdisplay;}return 0;}
 
-	virtual void SetUpdateFrequency(uint32_t pMilliseconds){};
+	virtual void SetUpdateFrequency(uint32_t pMilliseconds){mUpdateFrequency = pMilliseconds;}
 
 	void Run();
 
@@ -62,6 +65,7 @@ private:
 
 	struct gbm_surface *mNativeWindow = nullptr;
 	eui::ElementPtr mMainScreen = nullptr;
+	uint32_t mUpdateFrequency = 0;
 
 	/**
 	 * @brief Information about the mouse driver
@@ -554,6 +558,7 @@ void Graphics_DRM::Run()
 
 	while(mKeepGoing)
 	{
+		const auto start = std::chrono::system_clock::now();
 		ProcessEvents();
 		assert( mMainScreen );
 		mMainScreen->Update();
@@ -561,6 +566,14 @@ void Graphics_DRM::Run()
 		mMainScreen->Draw(this);
 		EndFrame();
 		SwapBuffers();
+		const auto end = std::chrono::system_clock::now();
+		const uint32_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+
+		// Now wait n milliseconds - frame time to give reliable update frequency.
+		if( mUpdateFrequency > duration  )
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
+		}
 	}
 }
 
