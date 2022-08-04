@@ -567,7 +567,7 @@ void Graphics_DRM::Run()
 		EndFrame();
 		SwapBuffers();
 		const auto end = std::chrono::system_clock::now();
-		const uint32_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
 
 		// Now wait n milliseconds - frame time to give reliable update frequency.
 		if( mUpdateFrequency > duration  )
