@@ -527,11 +527,11 @@ void Graphics_DRM::SwapBuffers()
 
 	while (waiting_for_flip)
 	{
-		drmEventContext evctx =
-		{
-			.version = 2,
-			.page_flip_handler = page_flip_handler,
-		};
+		drmEventContext evctx;
+		memset(&evctx,0,sizeof(evctx));
+
+		evctx.version = 2;
+		evctx.page_flip_handler = page_flip_handler;
 
 		fd_set fds;
 		FD_ZERO(&fds);
@@ -584,25 +584,6 @@ int main(const int argc,const char *argv[])
 {
 	g_argc = argc;
 	g_argv = argv;
-
-//    // Use dependency injection to pass events onto the controls.
-//    // This means that we don't need a circular header dependency that can make it hard to port code.
-//    // I do not want graphics.h including element.h as element.h already includes graphics.h
-//    auto touchEventHandler = [mainScreen](int32_t pX,int32_t pY,bool pTouched)
-//    {
-//        return mainScreen->TouchEvent(pX,pY,pTouched);
-//    };
-
-
-
-
-//    while( graphics->ProcessSystemEvents(touchEventHandler) )
-//    {
-//
-//        // Check again in a second. Not doing big wait here as I need to be able to quit in a timely fashion.
-//        // Also OS could correct display. But one second means system not pegged 100% rendering as fast as possible.
-//        sleep(1);
-//    }
 
 	eui::theGraphics = new eui::Graphics_DRM;
 	eui::theGraphics->Run();

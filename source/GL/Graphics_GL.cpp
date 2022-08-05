@@ -641,12 +641,12 @@ uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bo
 		if( mPNG->loader.GetHasAlpha() )
         {
             mPNG->loader.GetRGBA(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered);
+            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
         }
         else
         {
             mPNG->loader.GetRGB(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered);
+            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
         }
     }
 	else

@@ -121,10 +121,13 @@ public:
      * @brief Override these functions to extend the functionality of a control to build your own element types.
      * Return true to stop propagation of events to children.
      */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
     virtual bool OnDraw(Graphics* pGraphics){return false;}
     virtual bool OnUpdate(){return false;}
     virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched){return false;}
     virtual bool OnKeyboard(char pCharacter,bool pPressed){return false;}
+#pragma GCC diagnostic pop
 
     /**
      * @brief As well as using inheritance to change an elements behaviour, we can use dependency injection for more simple control customisation.
