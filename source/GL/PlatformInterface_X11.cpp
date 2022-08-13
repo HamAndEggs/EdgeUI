@@ -1,8 +1,10 @@
 
-#include "Element.h"
+
 #include "Graphics.h"
 #include "Diagnostics.h"
 #include "GLIncludes.h"
+#include "Application.h"
+#include "Element.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -11,18 +13,19 @@
 #include <assert.h>
 #include <thread>
 
-static int g_argc;
-static const char **g_argv;
+
 #define DESKTOP_EMULATION_WIDTH 1024
 #define DESKTOP_EMULATION_HEIGHT 600
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-class Graphics_X11 : public Graphics
+class PlatformInterface_X11 : public Graphics
 {
 public:
-	Graphics_X11();
-	virtual ~Graphics_X11();
+	PlatformInterface_X11(Application* pApplication);
+	~PlatformInterface_X11();
+
+	void MainLoop();
 
 	/**
 	 * @brief Creates the X11 window and all the bits needed to get rendering with.
@@ -37,36 +40,27 @@ public:
 	int GetWidth()const{return DESKTOP_EMULATION_WIDTH;}
 	int GetHeight()const{return DESKTOP_EMULATION_HEIGHT;}
 
-	virtual void SetUpdateFrequency(uint32_t pMilliseconds){mUpdateFrequency = pMilliseconds;}
-
-	void Run();
 
 private:
+	Application* mUsersApplication = nullptr;
+	Graphics* mGraphics = nullptr;
+
 	Display *mXDisplay = nullptr;
 	Window mWindow = 0;
 	Atom mDeleteMessage;
 	GLXContext mGLXContext = 0;
 	XSetWindowAttributes mWindowAttributes;
 	XVisualInfo* mVisualInfo;
-	bool mWindowReady;
+	bool mWindowReady = false;
+	bool mKeepGoing = true;
 
-	eui::ElementPtr mMainScreen = nullptr;
 	uint32_t mUpdateFrequency = 0;
 
 	void ProcessEvents();
 };
 
-static Graphics_X11* theGraphics = nullptr;
-Graphics* Graphics::Get()
-{
-	if( theGraphics == nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
-	}
-	return theGraphics;
-}
-
-Graphics_X11::Graphics_X11():
+PlatformInterface_X11::PlatformInterface_X11(Application* pApplication):
+	mUsersApplication(pApplication),
 	mXDisplay(NULL),
 	mWindow(0),
 	mWindowReady(false)
@@ -74,10 +68,13 @@ Graphics_X11::Graphics_X11():
 	InitialiseDisplay();
 }
 
-Graphics_X11::~Graphics_X11()
+PlatformInterface_X11::~PlatformInterface_X11()
 {
 	VERBOSE_MESSAGE("Cleaning up GL");
 	mWindowReady = false;
+
+	delete mGraphics;
+	mGraphics = nullptr;
 
 	glXMakeCurrent(mXDisplay, 0, 0 );
 	glXDestroyContext(mXDisplay,mGLXContext);
@@ -90,7 +87,7 @@ Graphics_X11::~Graphics_X11()
 	mXDisplay = nullptr;
 }
 
-void Graphics_X11::InitialiseDisplay()
+void PlatformInterface_X11::InitialiseDisplay()
 {
 	VERBOSE_MESSAGE("Making X11 window for GLES emulation");
 
@@ -181,10 +178,13 @@ void Graphics_X11::InitialiseDisplay()
 		nanosleep(&SleepTime,NULL);
 	}
 
-	InitialiseGL(GetWidth(), GetHeight());
+	mGraphics = new Graphics();
+	mGraphics->InitialiseGL(GetWidth(), GetHeight());
+	mUsersApplication->OnOpen(mGraphics);
+
 }
 
-void Graphics_X11::ProcessEvents()
+void PlatformInterface_X11::ProcessEvents()
 {
 	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
 	// This is despite what the documentation stated.
@@ -192,6 +192,7 @@ void Graphics_X11::ProcessEvents()
 	{
 		THROW_MEANINGFUL_EXCEPTION("The X11 display object is NULL!");
 	}
+	ElementPtr root = mUsersApplication->GetRootElement();
 
 	static bool touched = false;
 	while( XPending(mXDisplay) )
@@ -215,7 +216,7 @@ void Graphics_X11::ProcessEvents()
 			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
 			{
 				mWindowReady = false;
-//				pEventQuit();
+				mKeepGoing = false;
 			}
 			break;
 
@@ -224,28 +225,28 @@ void Graphics_X11::ProcessEvents()
 			if ( e.xkey.keycode == 0x09 )
 			{
 				mWindowReady = false;
-//				pEventQuit();
+				mKeepGoing = false;
 			}
 			break;
 
 		case MotionNotify:// Mouse movement
-			mMainScreen->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
 			break;
 
 		case ButtonPress:
 			touched = true;
-			mMainScreen->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
 			break;
 
 		case ButtonRelease:
 			touched = false;
-			mMainScreen->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
 			break;
 		}
 	}
 }
 
-void Graphics_X11::SwapBuffers()
+void PlatformInterface_X11::SwapBuffers()
 {
 	assert( mWindowReady );
 	if( mXDisplay == nullptr )
@@ -255,44 +256,40 @@ void Graphics_X11::SwapBuffers()
 	glXSwapBuffers(mXDisplay,mWindow);
 }
 
-void Graphics_X11::Run()
+void PlatformInterface_X11::MainLoop()
 {
-	mMainScreen = eui::Element::AllocateUI(g_argc,g_argv,this);
-
 	while(mKeepGoing)
 	{
-		const auto start = std::chrono::system_clock::now();
-		ProcessEvents();
-		assert( mMainScreen );
-		mMainScreen->Update();
-		BeginFrame();
-		mMainScreen->Draw(this);
-		EndFrame();
-		SwapBuffers();
-		const auto end = std::chrono::system_clock::now();
-		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+//		const auto start = std::chrono::system_clock::now();
 
-		// Now wait n milliseconds - frame time to give reliable update frequency.
-		if( mUpdateFrequency > duration  )
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
-		}
+		ElementPtr root = mUsersApplication->GetRootElement();
+		assert(root);
+
+		root->Update();
+		mGraphics->BeginFrame();
+		root->Draw(mGraphics,root->GetContentRectangle(mGraphics->GetDisplayRect()));
+		mGraphics->EndFrame();
+
+		SwapBuffers();
+//		const auto end = std::chrono::system_clock::now();
+//		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+//
+//		// Now wait n milliseconds - frame time to give reliable update frequency.
+//		if( mUpdateFrequency > duration  )
+//		{
+//			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
+//		}
+		ProcessEvents();
 	}
+	mUsersApplication->OnClose();
+}
+
+void Application::MainLoop(Application* pApplication)
+{
+	PlatformInterface_X11 platform(pApplication);
+	platform.MainLoop();
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
-
-
-int main(const int argc,const char *argv[])
-{
-	g_argc = argc;
-	g_argv = argv;
-
-	eui::theGraphics = new eui::Graphics_X11;
-	eui::theGraphics->Run();
-	delete eui::theGraphics;
-	eui::theGraphics = nullptr;
-
-    return EXIT_SUCCESS;
-}

@@ -24,29 +24,17 @@ typedef Element* ElementPtr;
 class Element
 {
 public:
-    // You have to implement this function in your code to allow the EdgeUI begin.
-    // This is the entry point for your application.
-    // The framework calls this, you do not!
-    // static eui::ElementPtr eui::Element::AllocateUI(const int argc,const char *argv[],eui::Graphics* pGraphics)
-    // {
-    //     return new MyUI(argc,argv,pGraphics); // MyUI is your derived class.
-    // }
-    static ElementPtr AllocateUI(const int argc,const char *argv[],Graphics* pGraphics);
-
-    ElementPtr Create(const Style& pStyle = Style());
-
     /**
      * @brief 
      */
-    Element();
+    Element(const Style& pStyle = eui::Style());
     virtual ~Element();
 
     /**
      * @brief The inner Rectangle that the control uses for it's children and content.
      * @return Rectangle 
      */
-    Rectangle GetContentRectangle()const;
-    Rectangle GetParentRectangle()const;
+    Rectangle GetContentRectangle(const Rectangle& pParentRect)const;
 
     uint32_t GetParentWidth()const;
     uint32_t GetParentHeight()const;
@@ -100,7 +88,7 @@ public:
      */
     void Update();
 
-    void Draw(Graphics* pGraphics);
+    void Draw(Graphics* pGraphics,const Rectangle& pParentRect);
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -123,7 +111,7 @@ public:
      */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-    virtual bool OnDraw(Graphics* pGraphics){return false;}
+    virtual bool OnDraw(Graphics* pGraphics,const Rectangle& pContentRect){return false;}
     virtual bool OnUpdate(){return false;}
     virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched){return false;}
     virtual bool OnKeyboard(char pCharacter,bool pPressed){return false;}
@@ -132,10 +120,10 @@ public:
     /**
      * @brief As well as using inheritance to change an elements behaviour, we can use dependency injection for more simple control customisation.
      */
-    typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics)>                        OnDrawCB;
-    typedef std::function<bool (ElementPtr pElement)>                                            OnUpdateCB;
-    typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>  OnTouchedCB;
-    typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>              OnKeyboardCB;
+    typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics,const Rectangle& pContentRect)> OnDrawCB;
+    typedef std::function<bool (ElementPtr pElement)>                                                   OnUpdateCB;
+    typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>         OnTouchedCB;
+    typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>                     OnKeyboardCB;
 
     void SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;}
     void SetOnUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;}

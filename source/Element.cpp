@@ -40,17 +40,11 @@ namespace eui{
     #define COUNT_DELETE()
 #endif
 
-ElementPtr Element::Create(const Style& pStyle)
-{
-    ElementPtr root = new Element();
-    root->SetStyle(pStyle);
-    return root;
-}
-
-Element::Element()
+Element::Element(const Style& pStyle)
 {
     SET_DEFAULT_ID();
     COUNT_ALLOCATION();
+    SetStyle(pStyle);
 }
 
 Element::~Element()
@@ -63,27 +57,16 @@ Element::~Element()
     COUNT_DELETE();
 }
 
-Rectangle Element::GetContentRectangle()const
+Rectangle Element::GetContentRectangle(const Rectangle& pParentRect)const
 {
-    const Rectangle parentContentRect = GetParentRectangle();
     const float cellWidth = 1.0f / GetParentWidth();
     const float cellHeight = 1.0f / GetParentHeight();
     const Rectangle rect = {cellWidth * mX,cellHeight*mY,cellWidth * (mX + mSpanX),cellHeight * (mY + mSpanY)};
 
-    const Rectangle contentRect(parentContentRect.GetX(rect.left),parentContentRect.GetY(rect.top),
-                                parentContentRect.GetX(rect.right),parentContentRect.GetY(rect.bottom));
+    const Rectangle contentRect(pParentRect.GetX(rect.left),pParentRect.GetY(rect.top),
+                                pParentRect.GetX(rect.right),pParentRect.GetY(rect.bottom));
 
-//    return contentRect;
     return Rectangle(contentRect.GetX(mPadding.left),contentRect.GetY(mPadding.top),contentRect.GetX(mPadding.right),contentRect.GetY(mPadding.bottom));
-}
-
-Rectangle Element::GetParentRectangle()const
-{
-    if( mParent )
-    {
-        return mParent->GetContentRectangle();
-    }
-    return Graphics::Get()->GetDisplayRect();
 }
 
 uint32_t Element::GetParentWidth()const
@@ -208,65 +191,63 @@ void Element::Update()
     }
 }
 
-void Element::Draw(Graphics* pGraphics)
+void Element::Draw(Graphics* pGraphics,const Rectangle& pContentRect)
 {
     if( mVisible )
     {
-        const Rectangle contentRect = GetContentRectangle();
-
-        pGraphics->DrawRectangle(contentRect,mStyle);
+        pGraphics->DrawRectangle(pContentRect,mStyle);
 
         if( mText.size() > 0 )
         {
             const int font = GetFont();
             if( font > 0 )
             {
-                pGraphics->FontPrint(font,contentRect,mStyle.mAlignment,mStyle.mForeground,mText);
+                pGraphics->FontPrint(font,pContentRect,mStyle.mAlignment,mStyle.mForeground,mText);
             }
         }
 
-        if( OnDraw(pGraphics) )
+        if( OnDraw(pGraphics,pContentRect) )
             return;
 
         if( mOnDrawCB )
         {
-            if( mOnDrawCB(this,pGraphics) )
+            if( mOnDrawCB(this,pGraphics,pContentRect) )
                 return;
         }
 
         for( auto& e : mChildren )
         {
-            e->Draw(pGraphics);
+            e->Draw(pGraphics,e->GetContentRectangle(pContentRect));
         }
     }
 }
 
 bool Element::TouchEvent(float pX,float pY,bool pTouched)
 {
-    const Rectangle contentRect = GetContentRectangle();    
-    if( contentRect.ContainsPoint(pX,pY) )
-    {
-        const float localX = pX - contentRect.left;
-        const float localY = pY - contentRect.top;
-        if( OnTouched(localX,localY,pTouched) )
-        {
-            return true;
-        }
-
-        if( mOnTouchedCB )
-        {
-            if( mOnTouchedCB(this,localX,localY,pTouched) )
-                return true;
-        }
-    }
-
-    for( auto& e : mChildren )
-    {
-        if( e->TouchEvent(pX,pY,pTouched) )
-        {
-            return true;
-        }
-    }
+//    const Rectangle contentRect = GetContentRectangle();    
+//    if( contentRect.ContainsPoint(pX,pY) )
+//    {
+//        const float localX = pX - contentRect.left;
+//        const float localY = pY - contentRect.top;
+//        if( OnTouched(localX,localY,pTouched) )
+//        {
+//            return true;
+//        }
+//
+//        if( mOnTouchedCB )
+//        {
+//            if( mOnTouchedCB(this,localX,localY,pTouched) )
+//                return true;
+//        }
+//    }
+//
+//    for( auto& e : mChildren )
+//    {
+//        if( e->TouchEvent(pX,pY,pTouched) )
+//        {
+//            return true;
+//        }
+//    }
 
     return false;
 }

@@ -54,9 +54,19 @@ public:
         ROTATE_FRAME_LANDSCAPE,		//!< If the hardware reports a portrait mode (width < height) will apply a 90 degree rotation
     };
 
-	static Graphics* Get(); // Will throw an exception if not ready.
-
+    Graphics();
     virtual ~Graphics();
+	void InitialiseGL(int pWidth,int pHeight);
+
+	/**
+	 * @brief Marks the start of the frame.
+	 */
+	void BeginFrame();
+
+	/**
+	 * @brief Called at the end of the rendering phase. Normally last part line in the while loop.
+	 */
+	void EndFrame();
 
     /**
      * @brief Get the display rectangle
@@ -86,8 +96,6 @@ public:
 	 * You would typically call this from a UI button to quit the app.
 	 */
 	void SetExitRequest(){mExitRequest = true;};
-
-	virtual void SetUpdateFrequency(uint32_t pMilliseconds) = 0;
 
     uint32_t FontLoad(const std::string& pFontName,int pPixelHeight = 40);
     void FontDelete(uint32_t pFont);
@@ -147,10 +155,9 @@ public:
 	 */
 	uint32_t TextureGetDiagnostics()const{return mDiagnostics.texture;}
 
-protected:
+private:
     bool mExitRequest = false;
 	uint32_t mCreateFlags = ROTATE_FRAME_BUFFER_0;
-	bool mKeepGoing = true;								//!< Set to false by the application requesting to exit or the user doing ctrl + c.
 
 	// mPhysical is the actual width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
 	struct
@@ -215,19 +222,6 @@ protected:
 	std::map<uint32_t,std::unique_ptr<FreeTypeFont>> mFreeTypeFonts;
 
 	FT_Library mFreetype = nullptr;
-
-    Graphics();
-	void InitialiseGL(int pWidth,int pHeight);
-
-	/**
-	 * @brief Marks the start of the frame.
-	 */
-	void BeginFrame();
-
-	/**
-	 * @brief Called at the end of the rendering phase. Normally last part line in the while loop.
-	 */
-	void EndFrame();
 
 	/**
 	 * @brief Sets some common rendering states for a nice starting point.

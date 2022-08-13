@@ -1,6 +1,8 @@
 #include "GLDiagnostics.h"
 #include "Graphics.h"
+#include "Application.h"
 #include "Element.h"
+
 
 #include <assert.h>
 #include <fcntl.h>
@@ -23,29 +25,28 @@
 #define EGL_NO_X11
 #define MESA_EGL_NO_X11_HEADERS
 
-static int g_argc;
-static const char **g_argv;
-
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Graphics_DRM : public Graphics
+class PlatformInterface_DRM : public Graphics
 {
 public:
-	Graphics_DRM();
-	virtual ~Graphics_DRM();
+	PlatformInterface_DRM(Application* pApplication);
+	virtual ~PlatformInterface_DRM();
+
+	void MainLoop();
 
 	void InitialiseDisplay();
 
 	int GetWidth()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->hdisplay;}return 0;}
 	int GetHeight()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->vdisplay;}return 0;}
 
-	virtual void SetUpdateFrequency(uint32_t pMilliseconds){mUpdateFrequency = pMilliseconds;}
-
-	void Run();
 
 private:
+	Application* mUsersApplication = nullptr;
+	Graphics* mGraphics = nullptr;
 
 	bool mIsFirstFrame = true;
+	bool mKeepGoing = true;
 	int mDRMFile = -1;
 
 	// This is used for the EGL bring up and getting GLES going along with DRM.
@@ -99,17 +100,9 @@ private:
 
 };
 
-static Graphics_DRM* theGraphics = nullptr;
-Graphics* Graphics::Get()
-{
-	if( theGraphics == nullptr )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
-	}
-	return theGraphics;
-}
 
-Graphics_DRM::Graphics_DRM()
+PlatformInterface_DRM::PlatformInterface_DRM(Application* pApplication):
+	mUsersApplication(pApplication)
 {
 	mPointer.mDevice = FindMouseDevice();
 
@@ -208,11 +201,16 @@ Graphics_DRM::Graphics_DRM()
 	drmModeFreeResources(resources);
 
 	InitialiseDisplay();
+	mGraphics = new Graphics();
+	mGraphics->InitialiseGL(GetWidth(), GetHeight());
+	mUsersApplication->OnOpen(mGraphics);
+
 }
 
-Graphics_DRM::~Graphics_DRM()
+PlatformInterface_DRM::~PlatformInterface_DRM()
 {
-	delete mMainScreen;
+	delete mGraphics;
+	mGraphics = nullptr;
 
 	VERBOSE_MESSAGE("Destroying context");
 	eglDestroyContext(mDisplay, mContext);
@@ -228,7 +226,35 @@ Graphics_DRM::~Graphics_DRM()
 	close(mPointer.mDevice);
 }
 
-int Graphics_DRM::FindMouseDevice()
+void PlatformInterface_DRM::MainLoop()
+{
+	while(mKeepGoing)
+	{
+
+//		const auto start = std::chrono::system_clock::now();
+
+		ElementPtr root = mUsersApplication->GetRootElement();
+		assert(root);
+		root->Update();
+		mGraphics->BeginFrame();
+		root->Draw(mGraphics,root->GetContentRectangle(mGraphics->GetDisplayRect()));
+		mGraphics->EndFrame();
+
+		SwapBuffers();
+//		const auto end = std::chrono::system_clock::now();
+//		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+//
+//		// Now wait n milliseconds - frame time to give reliable update frequency.
+//		if( mUpdateFrequency > duration  )
+//		{
+//			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
+//		}
+
+		ProcessEvents();
+	}
+}
+
+int PlatformInterface_DRM::FindMouseDevice()
 {
 	for( int n = 0 ; n < 16 ; n++ )
 	{
@@ -295,7 +321,7 @@ int Graphics_DRM::FindMouseDevice()
 	return 0;
 }
 
-void Graphics_DRM::ProcessEvents()
+void PlatformInterface_DRM::ProcessEvents()
 {
 	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
 	if( mPointer.mDevice > 0 )
@@ -342,7 +368,7 @@ void Graphics_DRM::ProcessEvents()
 	
 }
 
-void Graphics_DRM::InitialiseDisplay()
+void PlatformInterface_DRM::InitialiseDisplay()
 {
 	VERBOSE_MESSAGE("Calling DRM InitialiseDisplay");
 
@@ -381,11 +407,9 @@ void Graphics_DRM::InitialiseDisplay()
 
 	eglMakeCurrent(mDisplay, mSurface, mSurface, mContext );
 	CHECK_OGL_ERRORS();
-
-	InitialiseGL(GetWidth(), GetHeight());
 }
 
-void Graphics_DRM::FindEGLConfiguration()
+void PlatformInterface_DRM::FindEGLConfiguration()
 {
 	int depths_32_to_16[3] = {32,24,16};
 
@@ -459,7 +483,7 @@ static void drm_fb_destroy_callback(struct gbm_bo *bo, void *data)
 	delete user_data;
 }
 
-void Graphics_DRM::UpdateCurrentBuffer()
+void PlatformInterface_DRM::UpdateCurrentBuffer()
 {
 	assert(mNativeWindow);
 	mCurrentFrontBufferObject = gbm_surface_lock_front_buffer(mNativeWindow);
@@ -497,7 +521,7 @@ static void page_flip_handler(int fd, unsigned int frame, unsigned int sec, unsi
 	*((bool*)data) = 0;	// Set flip flag to false
 }
 
-void Graphics_DRM::SwapBuffers()
+void PlatformInterface_DRM::SwapBuffers()
 {
 	eglSwapBuffers(mDisplay,mSurface);
 
@@ -543,7 +567,7 @@ void Graphics_DRM::SwapBuffers()
 		if( ret < 0 )
 		{
 			// I wanted this to be an exception but could not, see comment on the select. So just cout::error for now...	
-			std::cerr << "Graphics_DRM::SwapBuffer select on DRM file failed to queue page flip " << std::string(strerror(errno)) << "\n";
+			std::cerr << "PlatformInterface_DRM::SwapBuffer select on DRM file failed to queue page flip " << std::string(strerror(errno)) << "\n";
 		}
 
 		drmHandleEvent(mDRMFile, &evctx);
@@ -552,43 +576,13 @@ void Graphics_DRM::SwapBuffers()
 	gbm_surface_release_buffer(mNativeWindow,mCurrentFrontBufferObject);
 }
 
-void Graphics_DRM::Run()
+void Application::MainLoop(Application* pApplication)
 {
-	mMainScreen = eui::Element::AllocateUI(g_argc,g_argv,this);
+	PlatformInterface_DRM platform(pApplication);
+	platform.MainLoop();
 
-	while(mKeepGoing)
-	{
-		const auto start = std::chrono::system_clock::now();
-		ProcessEvents();
-		assert( mMainScreen );
-		mMainScreen->Update();
-		BeginFrame();
-		mMainScreen->Draw(this);
-		EndFrame();
-		SwapBuffers();
-		const auto end = std::chrono::system_clock::now();
-		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-
-		// Now wait n milliseconds - frame time to give reliable update frequency.
-		if( mUpdateFrequency > duration  )
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
-		}
-	}
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
-
-int main(const int argc,const char *argv[])
-{
-	g_argc = argc;
-	g_argv = argv;
-
-	eui::theGraphics = new eui::Graphics_DRM;
-	eui::theGraphics->Run();
-	delete eui::theGraphics;
-	eui::theGraphics = nullptr;
-
-    return EXIT_SUCCESS;
-}

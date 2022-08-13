@@ -2,49 +2,50 @@
 
 #include "Diagnostics.h"
 #include "GLIncludes.h"
-#include "Element.h"
 #include "Graphics.h"
+#include "Element.h"
+#include "Application.h"
 
 #include <assert.h>
 #include <gtk/gtk.h> // sudo apt install libgtk-4-dev
 //#include <gtk/gtkglarea.h>
 #include <thread>
-static int g_argc;
-static const char **g_argv;
 
 #define DESKTOP_EMULATION_WIDTH 1024
 #define DESKTOP_EMULATION_HEIGHT 600
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Graphics_GTK4 : public Graphics
+class PlatformInterface_GTK4
 {
 public:
-	Graphics_GTK4();
-	virtual ~Graphics_GTK4();
+	PlatformInterface_GTK4(Application* pApplication);
+	~PlatformInterface_GTK4();
+
+	void MainLoop();
 
 	// Gtk signals.
 	gboolean Signal_Render(GtkGLArea *area, GdkGLContext *context);
 	void Signal_Realize(GtkWidget *widget);
 	void Signal_Activate(GtkApplication* app);
-	gboolean Signal_TickFrame();
+	void Signal_Destroy(GtkApplication* app);
+	
 	void Signal_MouseMove(double x,double y);
 	void Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state);
 	void Signal_KeyReleased(guint keyval,guint keycode,GdkModifierType state);
 
-	virtual void SetUpdateFrequency(uint32_t pMilliseconds);
-
 private:
-	GtkApplication *mApp = nullptr;
+	Application* mUsersApplication = nullptr;
+	GtkApplication *mGtk4Application = nullptr;
+	GMainContext *mContext = nullptr;
 	GtkWidget *mWindow = nullptr;
 	GtkWidget *mGL = nullptr;
 	GtkWidget *mGrid = nullptr;
-	guint mTickTimer = 0;
+	bool mKeepGoing = true;
+
+	Graphics* mGraphics = nullptr;
 
 	GtkGLArea* GetArea(){return (GtkGLArea*)mGL;}
-
-	bool mWindowActive = false;
-	eui::ElementPtr mMainScreen = nullptr;
 
 	struct
 	{
@@ -53,101 +54,121 @@ private:
 	}mMouse;
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks from GTK4
 static gboolean RenderCB(GtkGLArea *area, GdkGLContext *context,gpointer user_data)
 {
 	assert(user_data);
-	return ((Graphics_GTK4*)user_data)->Signal_Render(area,context);
+	return ((PlatformInterface_GTK4*)user_data)->Signal_Render(area,context);
 }
 
 static void RealizeCB(GtkWidget *widget,gpointer user_data )
 {
 	assert(user_data);
-	((Graphics_GTK4*)user_data)->Signal_Realize(widget);
+	((PlatformInterface_GTK4*)user_data)->Signal_Realize(widget);
 }
 
 static void ActivateCB(GtkApplication* app, gpointer user_data)
 {
 	assert(user_data);
-	((Graphics_GTK4*)user_data)->Signal_Activate(app);
+	((PlatformInterface_GTK4*)user_data)->Signal_Activate(app);
 }
 
-static gboolean TickFrameCB(gpointer user_data)
+static void DestroyCB(GtkApplication* app, gpointer user_data)
 {
 	assert(user_data);
-	return ((Graphics_GTK4*)user_data)->Signal_TickFrame();
+	((PlatformInterface_GTK4*)user_data)->Signal_Destroy(app);
 }
 
 static void MouseMoveCB(GtkEventControllerMotion *controller,double x,double y,gpointer user_data)
 {
 	assert(user_data);
-	((Graphics_GTK4*)user_data)->Signal_MouseMove(x,y);
+	((PlatformInterface_GTK4*)user_data)->Signal_MouseMove(x,y);
 }
 
 static void KeyPressedCB(GtkEventControllerKey *controller,guint keyval,guint keycode,GdkModifierType state,gpointer user_data)
 {
 	assert(user_data);
-	((Graphics_GTK4*)user_data)->Signal_KeyPressed(keyval,keycode,state);
+	((PlatformInterface_GTK4*)user_data)->Signal_KeyPressed(keyval,keycode,state);
 }
 
 static void KeyReleasedCB(GtkEventControllerKey *controller,guint keyval,guint keycode,GdkModifierType state,gpointer user_data)
 {
 	assert(user_data);
-	((Graphics_GTK4*)user_data)->Signal_KeyReleased(keyval,keycode,state);
+	((PlatformInterface_GTK4*)user_data)->Signal_KeyReleased(keyval,keycode,state);
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static Graphics_GTK4* theGraphics = nullptr;
-Graphics* Graphics::Get()
+PlatformInterface_GTK4::PlatformInterface_GTK4(Application* pApplication) : mUsersApplication(pApplication)
 {
-	if( theGraphics == nullptr )
+	mGtk4Application = gtk_application_new ("com.hex-edge.ui", G_APPLICATION_FLAGS_NONE);
+	g_signal_connect(mGtk4Application, "activate", G_CALLBACK(ActivateCB), this);
+
+	mContext = g_main_context_default ();
+	if( !g_main_context_acquire(mContext) )
 	{
-		THROW_MEANINGFUL_EXCEPTION("Graphics engine not allocated. Please call Graphics::Open first");
+		THROW_MEANINGFUL_EXCEPTION("Cannot acquire the default main context because it is already acquired by another thread!");
 	}
-	return theGraphics;
+
+	GError *error = NULL;
+	if( !g_application_register(G_APPLICATION(mGtk4Application), NULL, &error) )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Failed to register application: " + std::string(error->message) );
+	}
+	g_application_activate(G_APPLICATION(mGtk4Application));
 }
 
-Graphics_GTK4::Graphics_GTK4()
+PlatformInterface_GTK4::~PlatformInterface_GTK4()
 {
-	theGraphics = this;
-	mApp = gtk_application_new ("com.hex-edge.ui", G_APPLICATION_FLAGS_NONE);
-	g_signal_connect (mApp, "activate", G_CALLBACK(ActivateCB), this);
-	g_application_run (G_APPLICATION (mApp), 0, nullptr);
+	delete mGraphics;
+	g_object_unref(mGtk4Application);
 }
 
-Graphics_GTK4::~Graphics_GTK4()
+void PlatformInterface_GTK4::MainLoop()
 {
-	g_source_remove(mTickTimer);
-	delete mMainScreen;
+	while(mKeepGoing)
+	{
+		gtk_widget_queue_draw(mGL);
+		g_main_context_iteration(mContext, TRUE);
+	}
 
-	g_object_unref(mApp);
+	// Clean up.
+	g_settings_sync ();
+	while (g_main_context_iteration (mContext, FALSE));
+	g_main_context_release (mContext);
 }
 
-gboolean Graphics_GTK4::Signal_Render(GtkGLArea *area, GdkGLContext *context)
+gboolean PlatformInterface_GTK4::Signal_Render(GtkGLArea *area, GdkGLContext *context)
 {
-	assert( mMainScreen );
+	ElementPtr root = mUsersApplication->GetRootElement();
+	assert(root);
 
-	mMainScreen->Update();
-	BeginFrame();
-	mMainScreen->Draw(this);
-	EndFrame();
-
+	root->Update();
+    mGraphics->BeginFrame();
+    root->Draw(mGraphics,root->GetContentRectangle(mGraphics->GetDisplayRect()));
+    mGraphics->EndFrame();
+	
 	return TRUE;
 }
 
-void Graphics_GTK4::Signal_Realize(GtkWidget *widget)
+void PlatformInterface_GTK4::Signal_Realize(GtkWidget *widget)
 {
-  // We need to make the context current if we want to
-  // call GL API
 	gtk_gl_area_make_current(GetArea());
-	assert( mMainScreen == nullptr);
+	mGraphics = new Graphics();
 
-	InitialiseGL(DESKTOP_EMULATION_WIDTH,DESKTOP_EMULATION_HEIGHT);
-	SetUpdateFrequency(10);
-	mMainScreen = eui::Element::AllocateUI(g_argc,g_argv,this);
+	const int width = gtk_widget_get_width(mGL);
+	const int height = gtk_widget_get_height(mGL);
+
+	std::cout << "The size we got: " << width << "X" << height << "\n";
+
+	mGraphics->InitialiseGL(DESKTOP_EMULATION_WIDTH,DESKTOP_EMULATION_HEIGHT);
+	mUsersApplication->OnOpen(mGraphics);
 }
 
-void Graphics_GTK4::Signal_Activate(GtkApplication* app)
+void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 {
 	mWindow = gtk_application_window_new (app);
+	g_signal_connect(mWindow, "destroy", G_CALLBACK(DestroyCB), this);
 	gtk_window_set_title (GTK_WINDOW (mWindow), "EdgeUI");
 	gtk_window_set_default_size (GTK_WINDOW (mWindow), DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);
 
@@ -157,6 +178,7 @@ void Graphics_GTK4::Signal_Activate(GtkApplication* app)
 	mGL = gtk_gl_area_new();
     gtk_widget_set_hexpand(mGL, TRUE);
     gtk_widget_set_vexpand(mGL, TRUE);
+	gtk_widget_set_size_request (mGL, DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);	
 	g_object_set(mGL, "use-es", TRUE, NULL);
 	g_object_set(mGL, "has-depth-buffer", TRUE, NULL);
 	g_object_set(mGL, "has-stencil-buffer", TRUE, NULL);
@@ -179,86 +201,57 @@ void Graphics_GTK4::Signal_Activate(GtkApplication* app)
 	gtk_widget_show(mWindow);
 }
 
-gboolean Graphics_GTK4::Signal_TickFrame()
+void PlatformInterface_GTK4::Signal_Destroy(GtkApplication* app)
 {
-	gtk_widget_queue_draw(mGL);
-	return TRUE;
+	mUsersApplication->OnClose();
+	mKeepGoing = false;
 }
 
-void Graphics_GTK4::Signal_MouseMove(double x,double y)
+void PlatformInterface_GTK4::Signal_MouseMove(double x,double y)
 {
 	mMouse.LastX = (float)x;
 	mMouse.LastY = (float)y;
 }
 
-void Graphics_GTK4::Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state)
+void PlatformInterface_GTK4::Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state)
 {
+	ElementPtr root = mUsersApplication->GetRootElement();
+	assert(root);
+
 	if( state&GDK_BUTTON1_MASK )
 	{
-		mMainScreen->TouchEvent(mMouse.LastX,mMouse.LastY,true);
+		root->TouchEvent(mMouse.LastX,mMouse.LastY,true);
 	}
 	else
 	{
 		// Keyboard event...
-		mMainScreen->KeyboardEvent((char)keyval,true);
+		root->KeyboardEvent((char)keyval,true);
 	}
 }
 
-void Graphics_GTK4::Signal_KeyReleased(guint keyval,guint keycode,GdkModifierType state)
+void PlatformInterface_GTK4::Signal_KeyReleased(guint keyval,guint keycode,GdkModifierType state)
 {
+	ElementPtr root = mUsersApplication->GetRootElement();
+	assert(root);
+
 	if( state&GDK_BUTTON1_MASK )
 	{
-		mMainScreen->TouchEvent(mMouse.LastX,mMouse.LastY,false);
+		root->TouchEvent(mMouse.LastX,mMouse.LastY,false);
 	}
 	else
 	{
 		// Keyboard event...
-		mMainScreen->KeyboardEvent((char)keyval,false);
+		root->KeyboardEvent((char)keyval,false);
 	}
 }
 
-
-void Graphics_GTK4::SetUpdateFrequency(uint32_t pMilliseconds)
+void Application::MainLoop(Application* pApplication)
 {
-	if( mTickTimer > 0 )
-	{
-		g_source_remove(mTickTimer);
-	}
-	mTickTimer = g_timeout_add(pMilliseconds,TickFrameCB,this);
-}
+	PlatformInterface_GTK4 platform(pApplication);
+	platform.MainLoop();
 
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace eui{
-
-int main(const int argc,const char *argv[])
-{
-	g_argc = argc;
-	g_argv = argv;
-
-//    // Use dependency injection to pass events onto the controls.
-//    // This means that we don't need a circular header dependency that can make it hard to port code.
-//    // I do not want graphics.h including element.h as element.h already includes graphics.h
-//    auto touchEventHandler = [mainScreen](int32_t pX,int32_t pY,bool pTouched)
-//    {
-//        return mainScreen->TouchEvent(pX,pY,pTouched);
-//    };
-
-
-
-
-//    while( graphics->ProcessSystemEvents(touchEventHandler) )
-//    {
-//
-//        // Check again in a second. Not doing big wait here as I need to be able to quit in a timely fashion.
-//        // Also OS could correct display. But one second means system not pegged 100% rendering as fast as possible.
-//        sleep(1);
-//    }
-
-	eui::theGraphics = new eui::Graphics_GTK4;
-	delete eui::theGraphics;
-	eui::theGraphics = nullptr;
-
-    return EXIT_SUCCESS;
-}
