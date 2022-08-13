@@ -4,14 +4,9 @@ include(CPack)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK4 REQUIRED gtk4)
-
-# pkg-config --cflags gtk4
-# pkg-config --cflags cairo
 include_directories(
     include
-    ${GTK4_INCLUDE_DIRS}
+    /usr/include/freetype2/
 )
 
 file(GLOB SOURCE_FILES source/*.cpp)
@@ -53,6 +48,14 @@ target_sources(EdgeUI.GTK4 PRIVATE
     ${COMMON_SOURCE_FILES}
     source/GL/PlatformInterface_GTK4.cpp
 )
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK4 gtk4)
+
+# pkg-config --cflags gtk4
+# pkg-config --cflags cairo
+
+target_include_directories(EdgeUI.GTK4 PUBLIC ${GTK4_INCLUDE_DIRS})
+
 if( CMAKE_BUILD_TYPE STREQUAL Debug)
     target_compile_definitions(EdgeUI.GTK4 PUBLIC ${COMMON_DEBUG_DEFINES})
     target_compile_options(EdgeUI.GTK4 PUBLIC ${COMMON_DEBUG_COMPILE_OPTIONS})

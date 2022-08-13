@@ -29,11 +29,11 @@ NUMBER_OF_THREADS=$(nproc --all)
 cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
 cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 
-cmake --build build/debug --target EdgeUI.X11 -- -j${NUMBER_OF_THREADS}
-cmake --build build/release --target EdgeUI.X11 -- -j${NUMBER_OF_THREADS}
+#cmake --build build/debug --target EdgeUI.X11 -- -j${NUMBER_OF_THREADS}
+#cmake --build build/release --target EdgeUI.X11 -- -j${NUMBER_OF_THREADS}
  
 cmake --build build/debug --target EdgeUI.DRM -- -j${NUMBER_OF_THREADS}
-cmake --build build/release --target EdgeUI.DRM -- -j${NUMBER_OF_THREADS}
+#cmake --build build/release --target EdgeUI.DRM -- -j${NUMBER_OF_THREADS}
  
-cmake --build build/debug --target EdgeUI.GTK4 -- -j${NUMBER_OF_THREADS}
-cmake --build build/release --target EdgeUI.GTK4 -- -j${NUMBER_OF_THREADS}
+#cmake --build build/debug --target EdgeUI.GTK4 -- -j${NUMBER_OF_THREADS}
+#cmake --build build/release --target EdgeUI.GTK4 -- -j${NUMBER_OF_THREADS}

@@ -31,14 +31,14 @@ inline uint8_t PreviousPixel(const uint8_t* pC)
     const int a = *(pC - 1);
     const int x = *pC;
     return (uint8_t)((x + a));
-};
+}
 
 inline uint8_t PreviousRow(const uint8_t* pC,size_t pWidth)
 {
     const int b = *(pC - pWidth);
     const int x = *pC;
     return (uint8_t)((x + b));
-};
+}
 
 inline uint8_t Average(const uint8_t* pC,size_t pWidth)
 {
@@ -46,7 +46,7 @@ inline uint8_t Average(const uint8_t* pC,size_t pWidth)
     const int b = *(pC - pWidth);
     const int x = *pC;
     return (uint8_t)((x + ((a + b) / 2)));
-};
+}
 
 inline uint8_t Paeth(const uint8_t* pC,size_t pWidth)
 {
@@ -69,7 +69,7 @@ inline uint8_t Paeth(const uint8_t* pC,size_t pWidth)
     }
 
     return (uint8_t)(x+c);
-};
+}
 
 struct PNGChunk
 {
@@ -233,7 +233,7 @@ bool Loader::LoadFromMemory(const std::vector<uint8_t>& pMemory)
             }
             return false;
         }
-    };
+    }
 
     if( mVerbose )
     {
@@ -672,4 +672,4 @@ void Loader::PushTrueColourAlphaPixels(const std::vector<uint8_t>& pImageData,co
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};// namespace tinypng
+}//namespace tinypng
