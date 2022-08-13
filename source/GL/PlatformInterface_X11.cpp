@@ -260,27 +260,25 @@ void PlatformInterface_X11::MainLoop()
 {
 	while(mKeepGoing)
 	{
-//		const auto start = std::chrono::system_clock::now();
-
-		ElementPtr root = mUsersApplication->GetRootElement();
-		assert(root);
-
-		root->Update();
-		mGraphics->BeginFrame();
-		root->Draw(mGraphics,root->GetContentRectangle(mGraphics->GetDisplayRect()));
-		mGraphics->EndFrame();
+		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
+		
+		assert(mUsersApplication);
+		assert(mGraphics);
+		mUsersApplication->OnFrame(mGraphics,mGraphics->GetDisplayRect());
 
 		SwapBuffers();
-//		const auto end = std::chrono::system_clock::now();
-//		const uint32_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-//
-//		// Now wait n milliseconds - frame time to give reliable update frequency.
-//		if( mUpdateFrequency > duration  )
-//		{
-//			std::this_thread::sleep_for(std::chrono::milliseconds(mUpdateFrequency - duration));
-//		}
-		ProcessEvents();
+
+		// We call this as much as possible, if we call based on update rate, message response starts to behave badly.
+		do
+		{
+			ProcessEvents();
+			using namespace std::chrono_literals;
+			// we don't need to poll messages as fast as possible, so wait a little.
+			// Saves a lot of cpu time. On an AMD Ryzan 4800 goes from 16% cpu load to 0.2% load.
+			std::this_thread::sleep_for(1ms);
+		}while( loopTime > std::chrono::system_clock::now() );
 	}
+
 	mUsersApplication->OnClose();
 }
 

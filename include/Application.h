@@ -1,11 +1,14 @@
 #ifndef APPLICATION_H__
 #define APPLICATION_H__
 
+#include <assert.h>
+
+#include "Graphics.h"
+#include "Element.h"
+
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
-class Graphics;
-class Element;
 
 /**
  * @brief This is the abstract based class of the application.
@@ -26,9 +29,29 @@ public:
     // The platform code does not and should not retain this pointer as the app may change it.
     virtual Element* GetRootElement() = 0; 
 
+    // Overload this for application specific custom rendering logic.
+    virtual void OnFrame(Graphics* pGraphics,const Rectangle& pDisplayRectangle)
+    {
+        assert(pGraphics);
+        Element* root = GetRootElement();
+        if( root )
+        {
+            root->Update();
+            pGraphics->BeginFrame();
+            root->Draw(pGraphics,root->GetContentRectangle(pDisplayRectangle));
+            pGraphics->EndFrame();
+        }
+    }
+
+    // The minimum rate that the OnFrame is called, in milliseconds, if zero, will go as fast as possible.
+    // This is very handy for when you don't need high speed rate and so want to save CPU cycles.
+    virtual uint32_t GetUpdateInterval()const{return 0;}
+
     // The platform you're running on implements this but you call it in your main function.
     // Will return when the app is done, after OnClose is called. Just delete your object and return.
     static void MainLoop(Application* pApplication);
+
+private:
 };
 
 

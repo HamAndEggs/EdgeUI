@@ -129,7 +129,17 @@ void PlatformInterface_GTK4::MainLoop()
 	while(mKeepGoing)
 	{
 		gtk_widget_queue_draw(mGL);
-		g_main_context_iteration(mContext, TRUE);
+
+		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
+		// We call this as much as possible, if we call based on update rate, message response starts to behave badly.
+		do
+		{
+			g_main_context_iteration(mContext, FALSE);
+			using namespace std::chrono_literals;
+			// we don't need to poll messages as fast as possible, so wait a little.
+			// Saves a lot of cpu time. On an AMD Ryzan 4800 goes from 16% cpu load to 0.2% load.
+			std::this_thread::sleep_for(1ms);
+		}while( loopTime > std::chrono::system_clock::now() );
 	}
 
 	// Clean up.
@@ -140,14 +150,9 @@ void PlatformInterface_GTK4::MainLoop()
 
 gboolean PlatformInterface_GTK4::Signal_Render(GtkGLArea *area, GdkGLContext *context)
 {
-	ElementPtr root = mUsersApplication->GetRootElement();
-	assert(root);
-
-	root->Update();
-    mGraphics->BeginFrame();
-    root->Draw(mGraphics,root->GetContentRectangle(mGraphics->GetDisplayRect()));
-    mGraphics->EndFrame();
-	
+	assert(mUsersApplication);
+	assert(mGraphics);
+	mUsersApplication->OnFrame(mGraphics,mGraphics->GetDisplayRect());
 	return TRUE;
 }
 
