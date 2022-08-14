@@ -230,7 +230,7 @@ void PlatformInterface_X11::ProcessEvents()
 			break;
 
 		case MotionNotify:// Mouse movement
-			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+//			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
 			break;
 
 		case ButtonPress:
