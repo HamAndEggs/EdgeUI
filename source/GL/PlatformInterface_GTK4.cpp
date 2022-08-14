@@ -270,15 +270,7 @@ void PlatformInterface_GTK4::Signal_KeyReleased(guint keyval,guint keycode,GdkMo
 	ElementPtr root = mUsersApplication->GetRootElement();
 	assert(root);
 
-	if( state&GDK_BUTTON1_MASK )
-	{
-		root->TouchEvent(mMouse.LastX,mMouse.LastY,false);
-	}
-	else
-	{
-		// Keyboard event...
-		root->KeyboardEvent((char)keyval,false);
-	}
+	root->KeyboardEvent((char)keyval,false);
 }
 
 void Application::MainLoop(Application* pApplication)

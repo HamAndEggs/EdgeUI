@@ -64,7 +64,6 @@ private:
 	EGLConfig mConfig = nullptr;				//!<Configuration of the display.
 
 	struct gbm_surface *mNativeWindow = nullptr;
-	eui::ElementPtr mMainScreen = nullptr;
 	uint32_t mUpdateFrequency = 0;
 
 	/**
@@ -227,6 +226,7 @@ PlatformInterface_DRM::~PlatformInterface_DRM()
 
 void PlatformInterface_DRM::MainLoop()
 {
+	do
 	{
 		assert(mUsersApplication);
 		assert(mGraphics);
@@ -247,6 +247,8 @@ void PlatformInterface_DRM::MainLoop()
 			std::this_thread::sleep_for(1ms);
 		}while( loopTime > std::chrono::system_clock::now() );
 	}while(mUsersApplication->GetKeepGoing());
+
+	mUsersApplication->OnClose();
 }
 
 int PlatformInterface_DRM::FindMouseDevice()
@@ -321,6 +323,9 @@ void PlatformInterface_DRM::ProcessEvents()
 	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
 	if( mPointer.mDevice > 0 )
 	{
+		ElementPtr root = mUsersApplication->GetRootElement();
+		assert(root);
+
 		struct input_event ev;
 		// Grab all messages and process befor going to next frame.
 		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
@@ -339,7 +344,7 @@ void PlatformInterface_DRM::ProcessEvents()
 				{
 				case BTN_TOUCH:
 					mPointer.mCurrent.touched = (ev.value != 0);
-					mMainScreen->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+					root->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
 					break;
 				}
 				break;
@@ -355,7 +360,7 @@ void PlatformInterface_DRM::ProcessEvents()
 					mPointer.mCurrent.y = ev.value;
 					break;
 				}
-				mMainScreen->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+				root->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
 				break;
 			}
 		}
