@@ -330,6 +330,7 @@ void PlatformInterface_DRM::ProcessEvents()
 
 		struct input_event ev;
 		// Grab all messages and process befor going to next frame.
+		bool gotEvent = false;
 		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
 		{
 			// EV_SYN is a seperator of events.
@@ -339,6 +340,7 @@ void PlatformInterface_DRM::ProcessEvents()
 				std::cout << std::hex << ev.type << " " << ev.code << " " << ev.value  << std::dec << "\n";
 			}
 #endif
+			gotEvent = true;
 			switch( ev.type )
 			{
 			case EV_KEY:
@@ -346,13 +348,6 @@ void PlatformInterface_DRM::ProcessEvents()
 				{
 				case BTN_TOUCH:
 					mPointer.mCurrent.touched = (ev.value != 0);
-					{
-						float x = mPointer.mCurrent.x;
-						float y = mPointer.mCurrent.y;
-
-//						mGraphics->GetDisplayRotatedXY(x,y);
-						root->TouchEvent(x,y,mPointer.mCurrent.touched);
-					}
 					break;
 				}
 				break;
@@ -370,9 +365,17 @@ void PlatformInterface_DRM::ProcessEvents()
 				}
 				break;
 			}
-
-
 		}
+
+		if( gotEvent )
+		{
+			float x = mPointer.mCurrent.x;
+			float y = mPointer.mCurrent.y;
+
+//						mGraphics->GetDisplayRotatedXY(x,y);
+			root->TouchEvent(x,y,mPointer.mCurrent.touched);
+		}
+
 	}
 	
 }
