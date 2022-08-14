@@ -46,7 +46,6 @@ private:
 	Graphics* mGraphics = nullptr;
 
 	bool mIsFirstFrame = true;
-	bool mKeepGoing = true;
 	int mDRMFile = -1;
 
 	// This is used for the EGL bring up and getting GLES going along with DRM.
@@ -228,12 +227,12 @@ PlatformInterface_DRM::~PlatformInterface_DRM()
 
 void PlatformInterface_DRM::MainLoop()
 {
-	while(mKeepGoing)
 	{
-		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
-		
 		assert(mUsersApplication);
 		assert(mGraphics);
+
+		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
+		
 		mUsersApplication->OnFrame(mGraphics,mGraphics->GetDisplayRect());
 
 		SwapBuffers();
@@ -247,7 +246,7 @@ void PlatformInterface_DRM::MainLoop()
 			// Saves a lot of cpu time. On an AMD Ryzan 4800 goes from 16% cpu load to 0.2% load.
 			std::this_thread::sleep_for(1ms);
 		}while( loopTime > std::chrono::system_clock::now() );
-	}
+	}while(mUsersApplication->GetKeepGoing());
 }
 
 int PlatformInterface_DRM::FindMouseDevice()

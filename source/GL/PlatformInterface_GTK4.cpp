@@ -31,6 +31,7 @@ public:
 	void Signal_Destroy(GtkApplication* app);
 	
 	void Signal_MouseMove(double x,double y);
+	void Signal_MouseButton(double x,double y,bool Pressed);
 	void Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state);
 	void Signal_KeyReleased(guint keyval,guint keycode,GdkModifierType state);
 
@@ -41,7 +42,7 @@ private:
 	GtkWidget *mWindow = nullptr;
 	GtkWidget *mGL = nullptr;
 	GtkWidget *mGrid = nullptr;
-	bool mKeepGoing = true;
+
 
 	Graphics* mGraphics = nullptr;
 
@@ -86,6 +87,18 @@ static void MouseMoveCB(GtkEventControllerMotion *controller,double x,double y,g
 	((PlatformInterface_GTK4*)user_data)->Signal_MouseMove(x,y);
 }
 
+static void MouseButtonPressedCB(GtkGestureClick *gesture,int n_press,double x,double y,gpointer user_data)
+{
+	assert(user_data);
+	((PlatformInterface_GTK4*)user_data)->Signal_MouseButton(x,y,true);
+}
+
+static void MouseButtonReleasedCB(GtkGestureClick *gesture,int n_press,double x,double y,gpointer user_data)
+{
+	assert(user_data);
+	((PlatformInterface_GTK4*)user_data)->Signal_MouseButton(x,y,false);
+}
+
 static void KeyPressedCB(GtkEventControllerKey *controller,guint keyval,guint keycode,GdkModifierType state,gpointer user_data)
 {
 	assert(user_data);
@@ -97,6 +110,9 @@ static void KeyReleasedCB(GtkEventControllerKey *controller,guint keyval,guint k
 	assert(user_data);
 	((PlatformInterface_GTK4*)user_data)->Signal_KeyReleased(keyval,keycode,state);
 }
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PlatformInterface_GTK4::PlatformInterface_GTK4(Application* pApplication) : mUsersApplication(pApplication)
@@ -126,8 +142,11 @@ PlatformInterface_GTK4::~PlatformInterface_GTK4()
 
 void PlatformInterface_GTK4::MainLoop()
 {
-	while(mKeepGoing)
+	do
 	{
+		assert(mUsersApplication);
+		assert(mGL);
+		
 		gtk_widget_queue_draw(mGL);
 
 		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
@@ -140,12 +159,14 @@ void PlatformInterface_GTK4::MainLoop()
 			// Saves a lot of cpu time. On an AMD Ryzan 4800 goes from 16% cpu load to 0.2% load.
 			std::this_thread::sleep_for(1ms);
 		}while( loopTime > std::chrono::system_clock::now() );
-	}
+	}while(mUsersApplication->GetKeepGoing());
 
 	// Clean up.
 	g_settings_sync ();
 	while (g_main_context_iteration (mContext, FALSE));
 	g_main_context_release (mContext);
+
+	mUsersApplication->OnClose();
 }
 
 gboolean PlatformInterface_GTK4::Signal_Render(GtkGLArea *area, GdkGLContext *context)
@@ -197,6 +218,12 @@ void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 		g_signal_connect(controller, "motion", G_CALLBACK (MouseMoveCB), this);
 		gtk_widget_add_controller(mGL, controller);
 
+	GtkGesture *press = gtk_gesture_click_new ();
+		gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (press), GDK_BUTTON_PRIMARY);
+		g_signal_connect (press, "pressed", G_CALLBACK (MouseButtonPressedCB), this);
+		g_signal_connect (press, "released", G_CALLBACK (MouseButtonReleasedCB), this);
+		gtk_widget_add_controller (mGL, GTK_EVENT_CONTROLLER (press));
+
 	controller = gtk_event_controller_key_new();
 		g_signal_connect(controller, "key-pressed", G_CALLBACK (KeyPressedCB), this);
 		g_signal_connect(controller, "key-released", G_CALLBACK (KeyReleasedCB), this);
@@ -208,8 +235,7 @@ void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 
 void PlatformInterface_GTK4::Signal_Destroy(GtkApplication* app)
 {
-	mUsersApplication->OnClose();
-	mKeepGoing = false;
+	mUsersApplication->SetExit();
 }
 
 void PlatformInterface_GTK4::Signal_MouseMove(double x,double y)
@@ -218,19 +244,24 @@ void PlatformInterface_GTK4::Signal_MouseMove(double x,double y)
 	mMouse.LastY = (float)y;
 }
 
+void PlatformInterface_GTK4::Signal_MouseButton(double x,double y,bool Pressed)
+{
+	ElementPtr root = mUsersApplication->GetRootElement();
+	assert(root);
+	root->TouchEvent(x,y,Pressed);
+}
+
 void PlatformInterface_GTK4::Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state)
 {
 	ElementPtr root = mUsersApplication->GetRootElement();
 	assert(root);
 
-	if( state&GDK_BUTTON1_MASK )
+	// Keyboard event...
+	root->KeyboardEvent((char)keyval,true);
+
+	if( keyval == GDK_KEY_Escape )
 	{
-		root->TouchEvent(mMouse.LastX,mMouse.LastY,true);
-	}
-	else
-	{
-		// Keyboard event...
-		root->KeyboardEvent((char)keyval,true);
+		mUsersApplication->SetExit();
 	}
 }
 

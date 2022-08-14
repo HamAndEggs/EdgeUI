@@ -36,9 +36,10 @@ public:
         Element* root = GetRootElement();
         if( root )
         {
+            root->Layout(pDisplayRectangle);
             root->Update();
             pGraphics->BeginFrame();
-            root->Draw(pGraphics,root->GetContentRectangle(pDisplayRectangle));
+            root->Draw(pGraphics);
             pGraphics->EndFrame();
         }
     }
@@ -47,11 +48,17 @@ public:
     // This is very handy for when you don't need high speed rate and so want to save CPU cycles.
     virtual uint32_t GetUpdateInterval()const{return 0;}
 
+    // Used by the platform specific code to know when to exit. 
+    bool GetKeepGoing()const{return mKeepGoing;}
+    void SetExit(){mKeepGoing = false;}
+
     // The platform you're running on implements this but you call it in your main function.
     // Will return when the app is done, after OnClose is called. Just delete your object and return.
     static void MainLoop(Application* pApplication);
 
 private:
+    bool mKeepGoing = true;
+
 };
 
 

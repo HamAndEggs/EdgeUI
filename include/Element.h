@@ -34,7 +34,7 @@ public:
      * @brief The inner Rectangle that the control uses for it's children and content.
      * @return Rectangle 
      */
-    Rectangle GetContentRectangle(const Rectangle& pParentRect)const;
+    Rectangle GetContentRectangle()const{return mContentRectangle;}
 
     uint32_t GetParentWidth()const;
     uint32_t GetParentHeight()const;
@@ -62,33 +62,40 @@ public:
 
     ElementPtr GetChildByID(const std::string_view& pID);
 
-    void SetPos(uint32_t pX,uint32_t pY);
-    void SetGrid(uint32_t pWidth,uint32_t pHeight);
-    void SetSpan(uint32_t pX,uint32_t pY);
+    ElementPtr SetPos(uint32_t pX,uint32_t pY);
+    ElementPtr SetGrid(uint32_t pWidth,uint32_t pHeight);
+    ElementPtr SetSpan(uint32_t pX,uint32_t pY);
 
-    void SetPadding(float pPadding);
-    void SetPadding(const Rectangle& pPadding);
+    ElementPtr SetPadding(float pPadding);
+    ElementPtr SetPadding(float pLeft,float pRight,float pTop,float pBottom);
+    ElementPtr SetPadding(const Rectangle& pPadding);
 
-    void SetID(const std::string& pID){mID = pID;}
-    void SetText(const std::string& pText){mText = pText;}
-    void SetTextF(const char* pFmt,...);
-    void SetFont(int pFont){mFont = pFont;}
-    void SetStyle(const Style& pStyle){mStyle = pStyle;}
+    ElementPtr SetID(const std::string& pID){mID = pID;return this;}
+    ElementPtr SetText(const std::string& pText){mText = pText;return this;}
+    ElementPtr SetTextF(const char* pFmt,...);
+    ElementPtr SetFont(int pFont){mFont = pFont;return this;}
+    ElementPtr SetStyle(const Style& pStyle){mStyle = pStyle;return this;}
 
-    void SetVisible(bool pVisible){mVisible = pVisible;}
-    void SetActive(bool pActive){mActive = pActive;}
+    ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
+    ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
 
-    void Attach(ElementPtr pElement);
-    void Remove(ElementPtr pElement);
+    ElementPtr Attach(ElementPtr pElement);
+    ElementPtr Remove(ElementPtr pElement);
+
+    /**
+     * @brief Calculates it's content rect based on it's parents.
+     * For correct updating and rendering, call before update.
+     * @param pParentRect 
+     */
+    void Layout(const Rectangle& pParentRect);
 
     /**
      * @brief Updates all elements in the tree, if they are visible.
-     * Doing full update before the draw allows all dependencies to have the correct data for rendering.
-    * Application only calls this on the root, it is propagated to the children.
+     * For correct rendering, call before draw.
      */
     void Update();
 
-    void Draw(Graphics* pGraphics,const Rectangle& pParentRect);
+    void Draw(Graphics* pGraphics);
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
@@ -125,10 +132,10 @@ public:
     typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>         OnTouchedCB;
     typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>                     OnKeyboardCB;
 
-    void SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;}
-    void SetOnUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;}
-    void SetOnTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;}
-    void SetOnKeyboard(OnKeyboardCB pOnKeyboardCB){mOnKeyboardCB = pOnKeyboardCB;}
+    ElementPtr SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;return this;}
+    ElementPtr SetOnUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;return this;}
+    ElementPtr SetOnTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;return this;}
+    ElementPtr SetOnKeyboard(OnKeyboardCB pOnKeyboardCB){mOnKeyboardCB = pOnKeyboardCB;return this;}
 
 private:
     ElementPtr mParent = nullptr;
@@ -148,12 +155,14 @@ private:
     uint32_t mSpanY = 1;
 
     Rectangle mPadding = {0.0f,0.0f,1.0f,1.0f};
+    Rectangle mContentRectangle = {0.0f,0.0f,1.0f,1.0f};
 
     OnDrawCB mOnDrawCB = nullptr;
     OnUpdateCB mOnUpdateCB = nullptr;
     OnTouchedCB mOnTouchedCB = nullptr;
     OnKeyboardCB mOnKeyboardCB = nullptr;
 
+    void CalculateContentRectangle(const Rectangle& pParentRect);
 
 };
 

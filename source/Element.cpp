@@ -57,18 +57,6 @@ Element::~Element()
     COUNT_DELETE();
 }
 
-Rectangle Element::GetContentRectangle(const Rectangle& pParentRect)const
-{
-    const float cellWidth = 1.0f / GetParentWidth();
-    const float cellHeight = 1.0f / GetParentHeight();
-    const Rectangle rect = {cellWidth * mX,cellHeight*mY,cellWidth * (mX + mSpanX),cellHeight * (mY + mSpanY)};
-
-    const Rectangle contentRect(pParentRect.GetX(rect.left),pParentRect.GetY(rect.top),
-                                pParentRect.GetX(rect.right),pParentRect.GetY(rect.bottom));
-
-    return Rectangle(contentRect.GetX(mPadding.left),contentRect.GetY(mPadding.top),contentRect.GetX(mPadding.right),contentRect.GetY(mPadding.bottom));
-}
-
 uint32_t Element::GetParentWidth()const
 {
     if( mParent )
@@ -101,22 +89,25 @@ int Element::GetFont()const
     return 0;
 }
 
-void Element::SetPos(uint32_t pX,uint32_t pY)
+ElementPtr Element::SetPos(uint32_t pX,uint32_t pY)
 {
     mX = pX;
     mY = pY;
+    return this;
 }
 
-void Element::SetGrid(uint32_t pWidth,uint32_t pHeight)
+ElementPtr Element::SetGrid(uint32_t pWidth,uint32_t pHeight)
 {
     mWidth = pWidth;
     mHeight = pHeight;
+    return this;
 }
 
-void Element::SetSpan(uint32_t pX,uint32_t pY)
+ElementPtr Element::SetSpan(uint32_t pX,uint32_t pY)
 {
     mSpanX = pX;
     mSpanY = pY;
+    return this;
 }
 
 ElementPtr Element::GetChildByID(const std::string_view& pID)
@@ -134,20 +125,32 @@ ElementPtr Element::GetChildByID(const std::string_view& pID)
     return nullptr;
 }
 
-void Element::SetPadding(float pPadding)
+ElementPtr Element::SetPadding(float pPadding)
 {
     mPadding.left = pPadding;
     mPadding.right = 1.0f - pPadding;
     mPadding.top = pPadding;
     mPadding.bottom = 1.0f - pPadding;
+    return this;
 }
 
-void Element::SetPadding(const Rectangle& pPadding)
+ElementPtr Element::SetPadding(float pLeft,float pRight,float pTop,float pBottom)
+{
+    mPadding.left = pLeft;
+    mPadding.right = pRight;
+    mPadding.top = pTop;
+    mPadding.bottom = pBottom;
+    return this;
+}
+
+ElementPtr Element::SetPadding(const Rectangle& pPadding)
 {
     mPadding = pPadding;
+    return this;
 }
 
-void Element::SetTextF(const char* pFmt,...)
+
+ElementPtr Element::SetTextF(const char* pFmt,...)
 {
     assert(pFmt);
     char buf[1024];
@@ -156,19 +159,31 @@ void Element::SetTextF(const char* pFmt,...)
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
 	SetText(buf);
+    return this;
 }
 
-void Element::Attach(ElementPtr pElement)
+ElementPtr Element::Attach(ElementPtr pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
     mChildren.push_back(pElement);
     pElement->mParent = this;
+    return this;
 }
 
-void Element::Remove(ElementPtr pElement)
+ElementPtr Element::Remove(ElementPtr pElement)
 {
     pElement->mParent = nullptr;
     mChildren.remove(pElement);
+    return this;
+}
+
+void Element::Layout(const Rectangle& pParentRect)
+{
+    CalculateContentRectangle(pParentRect);
+    for( auto& e : mChildren )
+    {
+        e->Layout(mContentRectangle);
+    }
 }
 
 void Element::Update()
@@ -191,71 +206,69 @@ void Element::Update()
     }
 }
 
-void Element::Draw(Graphics* pGraphics,const Rectangle& pContentRect)
+void Element::Draw(Graphics* pGraphics)
 {
     if( mVisible )
     {
-        pGraphics->DrawRectangle(pContentRect,mStyle);
+        pGraphics->DrawRectangle(mContentRectangle,mStyle);
 
         if( mText.size() > 0 )
         {
             const int font = GetFont();
             if( font > 0 )
             {
-                pGraphics->FontPrint(font,pContentRect,mStyle.mAlignment,mStyle.mForeground,mText);
+                pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
             }
         }
 
-        if( OnDraw(pGraphics,pContentRect) )
+        if( OnDraw(pGraphics,mContentRectangle) )
             return;
 
         if( mOnDrawCB )
         {
-            if( mOnDrawCB(this,pGraphics,pContentRect) )
+            if( mOnDrawCB(this,pGraphics,mContentRectangle) )
                 return;
         }
 
         for( auto& e : mChildren )
         {
-            e->Draw(pGraphics,e->GetContentRectangle(pContentRect));
+            e->Draw(pGraphics);
         }
     }
 }
 
 bool Element::TouchEvent(float pX,float pY,bool pTouched)
 {
-//    const Rectangle contentRect = GetContentRectangle();    
-//    if( contentRect.ContainsPoint(pX,pY) )
-//    {
-//        const float localX = pX - contentRect.left;
-//        const float localY = pY - contentRect.top;
-//        if( OnTouched(localX,localY,pTouched) )
-//        {
-//            return true;
-//        }
-//
-//        if( mOnTouchedCB )
-//        {
-//            if( mOnTouchedCB(this,localX,localY,pTouched) )
-//                return true;
-//        }
-//    }
-//
-//    for( auto& e : mChildren )
-//    {
-//        if( e->TouchEvent(pX,pY,pTouched) )
-//        {
-//            return true;
-//        }
-//    }
+    if( mContentRectangle.ContainsPoint(pX,pY) )
+    {
+        const float localX = pX - mContentRectangle.left;
+        const float localY = pY - mContentRectangle.top;
+        if( OnTouched(localX,localY,pTouched) )
+        {
+            return true;
+        }
+
+        if( mOnTouchedCB )
+        {
+            if( mOnTouchedCB(this,localX,localY,pTouched) )
+                return true;
+        }
+    }
+
+    for( auto& e : mChildren )
+    {
+        if( e->TouchEvent(pX,pY,pTouched) )
+        {
+            return true;
+        }
+    }
 
     return false;
 }
 
 bool Element::KeyboardEvent(char pCharacter,bool pPressed)
 {
-//    const Rectangle contentRect = GetContentRectangle();
-//    if( contentRect.ContainsPoint(pX,pY) ) TODO: Make it send this char to selected element...
+//    if( mContentRectangle.ContainsPoint(pX,pY) )// TODO: Make it send this char to selected element...
     {
         if( OnKeyboard(pCharacter,pPressed) )
         {
@@ -280,6 +293,21 @@ bool Element::KeyboardEvent(char pCharacter,bool pPressed)
     return false;
 }
 
+void Element::CalculateContentRectangle(const Rectangle& pParentRect)
+{
+    const float cellWidth = 1.0f / GetParentWidth();
+    const float cellHeight = 1.0f / GetParentHeight();
+    const Rectangle rect = {cellWidth * mX,cellHeight*mY,cellWidth * (mX + mSpanX),cellHeight * (mY + mSpanY)};
+
+    const Rectangle contentRect(pParentRect.GetX(rect.left),pParentRect.GetY(rect.top),
+                                pParentRect.GetX(rect.right),pParentRect.GetY(rect.bottom));
+
+    mContentRectangle.Set(
+        contentRect.GetX(mPadding.left),
+        contentRect.GetY(mPadding.top),
+        contentRect.GetX(mPadding.right),
+        contentRect.GetY(mPadding.bottom));
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }//namespace eui{

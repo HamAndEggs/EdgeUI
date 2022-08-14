@@ -21,7 +21,9 @@ set( COMMON_SOURCE_FILES
 set( COMMON_DEBUG_COMPILE_OPTIONS
     -Wall
     -Wpedantic
-    -Werror)
+    -Werror
+    -Wno-unused-function
+    -Wno-unused-variable)
 
 set( COMMON_DEBUG_DEFINES
     -DVERBOSE_BUILD

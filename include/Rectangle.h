@@ -31,6 +31,14 @@ struct Rectangle
         return pRect;
     }
 
+    void Set(float pLeft,float pTop,float pRight,float pBottom)
+    {
+        left = pLeft;
+        top = pTop;
+        right = pRight;
+        bottom = pBottom;
+    }
+
     bool ContainsPoint(float pX,float pY)const
     {
         return pX >= left && pX <= right &&

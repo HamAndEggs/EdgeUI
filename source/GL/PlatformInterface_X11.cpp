@@ -52,7 +52,7 @@ private:
 	XSetWindowAttributes mWindowAttributes;
 	XVisualInfo* mVisualInfo;
 	bool mWindowReady = false;
-	bool mKeepGoing = true;
+
 
 	uint32_t mUpdateFrequency = 0;
 
@@ -216,7 +216,7 @@ void PlatformInterface_X11::ProcessEvents()
 			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
 			{
 				mWindowReady = false;
-				mKeepGoing = false;
+				mUsersApplication->SetExit();
 			}
 			break;
 
@@ -225,7 +225,7 @@ void PlatformInterface_X11::ProcessEvents()
 			if ( e.xkey.keycode == 0x09 )
 			{
 				mWindowReady = false;
-				mKeepGoing = false;
+				mUsersApplication->SetExit();
 			}
 			break;
 
@@ -258,12 +258,13 @@ void PlatformInterface_X11::SwapBuffers()
 
 void PlatformInterface_X11::MainLoop()
 {
-	while(mKeepGoing)
+	do
 	{
-		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
-		
 		assert(mUsersApplication);
 		assert(mGraphics);
+		
+		const auto loopTime = std::chrono::system_clock::now() + std::chrono::milliseconds(mUsersApplication->GetUpdateInterval());
+		
 		mUsersApplication->OnFrame(mGraphics,mGraphics->GetDisplayRect());
 
 		SwapBuffers();
@@ -277,7 +278,7 @@ void PlatformInterface_X11::MainLoop()
 			// Saves a lot of cpu time. On an AMD Ryzan 4800 goes from 16% cpu load to 0.2% load.
 			std::this_thread::sleep_for(1ms);
 		}while( loopTime > std::chrono::system_clock::now() );
-	}
+	}while(mUsersApplication->GetKeepGoing());
 
 	mUsersApplication->OnClose();
 }

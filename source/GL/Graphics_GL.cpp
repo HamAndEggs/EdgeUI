@@ -539,7 +539,10 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 	
 	pRect.GetQuad(quad);
 
-	assert( pColour != COLOUR_NONE );
+	if( pColour == COLOUR_NONE )
+	{
+		pColour = COLOUR_WHITE;
+	}
 
 	EnableShader(mShaders.TextureColour);
 	SetTransformIdentity();	
