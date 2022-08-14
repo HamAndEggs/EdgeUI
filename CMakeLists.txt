@@ -26,8 +26,8 @@ set( COMMON_DEBUG_COMPILE_OPTIONS
     -Wno-unused-variable)
 
 set( COMMON_DEBUG_DEFINES
-    -DVERBOSE_BUILD
-    -DVERBOSE_SHADER_BUILD)
+    -DVERBOSE_BUILD)
+#    -DVERBOSE_SHADER_BUILD)
 
 #*************** X11 Target
 add_library(EdgeUI.X11 ${SOURCE_FILES})

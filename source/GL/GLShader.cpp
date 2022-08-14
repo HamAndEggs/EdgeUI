@@ -81,7 +81,7 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 GLShader::~GLShader()
 {
 	VERBOSE_SHADER_MESSAGE("Deleting shader " << mName << " " << mShader);
-	
+
 	glDeleteShader(mVertexShader);
 	CHECK_OGL_ERRORS();
 

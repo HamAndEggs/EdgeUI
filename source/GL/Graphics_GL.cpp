@@ -50,7 +50,6 @@ Graphics::~Graphics()
 	delete mShaders.TextureAlphaOnly;
 	delete mShaders.RectangleBorder;
 
-	
 	// delete all free type fonts.
 	mFreeTypeFonts.clear();
 	if( mFreetype != nullptr )

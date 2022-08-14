@@ -182,6 +182,8 @@ PlatformInterface_DRM::PlatformInterface_DRM(Application* pApplication):
 		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed to find screen mode");
 	}
 
+	std::clog << GetWidth() << "X" << GetHeight() << "\n";
+
 	// Now grab the encoder, we need it for the CRTC ID. This is display connected to the connector.
 	for( int n = 0 ; n < resources->count_encoders && mModeEncoder == nullptr ; n++ )
 	{
@@ -347,7 +349,8 @@ void PlatformInterface_DRM::ProcessEvents()
 					{
 						float x = mPointer.mCurrent.x;
 						float y = mPointer.mCurrent.y;
-						mGraphics->GetDisplayRotatedXY(x,y);
+
+//						mGraphics->GetDisplayRotatedXY(x,y);
 						root->TouchEvent(x,y,mPointer.mCurrent.touched);
 					}
 					break;
@@ -365,15 +368,10 @@ void PlatformInterface_DRM::ProcessEvents()
 					mPointer.mCurrent.y = ev.value;
 					break;
 				}
-
-				{
-					float x = mPointer.mCurrent.x;
-					float y = mPointer.mCurrent.y;
-					mGraphics->GetDisplayRotatedXY(x,y);
-					root->TouchEvent(x,y,mPointer.mCurrent.touched);
-				}
 				break;
 			}
+
+
 		}
 	}
 	
