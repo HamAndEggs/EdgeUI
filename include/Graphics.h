@@ -77,7 +77,10 @@ public:
 
     int32_t GetDisplayHeight()const;
 
-	bool GetIsPortrait(){return mCreateFlags == ROTATE_FRAME_BUFFER_90 || mCreateFlags == ROTATE_FRAME_BUFFER_270;}
+	bool GetIsPortrait(){return mDisplayRotation == ROTATE_FRAME_BUFFER_90 || mDisplayRotation == ROTATE_FRAME_BUFFER_270;}
+
+	DisplayRotation GetDisplayRotation()const{return mDisplayRotation;}
+	void GetDisplayRotatedXY(float &x,float &y)const;
 
     /**
      * @brief Builds a set of points that can be used for drawing a rounded rectangle with lines or polygons.
@@ -157,7 +160,7 @@ public:
 
 private:
     bool mExitRequest = false;
-	uint32_t mCreateFlags = ROTATE_FRAME_BUFFER_0;
+	DisplayRotation mDisplayRotation = ROTATE_FRAME_BUFFER_0;
 
 	// mPhysical is the actual width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
 	struct

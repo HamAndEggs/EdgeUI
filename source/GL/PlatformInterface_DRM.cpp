@@ -344,7 +344,12 @@ void PlatformInterface_DRM::ProcessEvents()
 				{
 				case BTN_TOUCH:
 					mPointer.mCurrent.touched = (ev.value != 0);
-					root->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+					{
+						float x = mPointer.mCurrent.x;
+						float y = mPointer.mCurrent.y;
+						mGraphics->GetDisplayRotatedXY(x,y);
+						root->TouchEvent(x,y,mPointer.mCurrent.touched);
+					}
 					break;
 				}
 				break;
@@ -360,7 +365,13 @@ void PlatformInterface_DRM::ProcessEvents()
 					mPointer.mCurrent.y = ev.value;
 					break;
 				}
-				root->TouchEvent(mPointer.mCurrent.x,mPointer.mCurrent.y,mPointer.mCurrent.touched);
+
+				{
+					float x = mPointer.mCurrent.x;
+					float y = mPointer.mCurrent.y;
+					mGraphics->GetDisplayRotatedXY(x,y);
+					root->TouchEvent(x,y,mPointer.mCurrent.touched);
+				}
 				break;
 			}
 		}

@@ -226,25 +226,53 @@ void Graphics::GetRoundedRectangleBoarderPoints(const Rectangle& pRect,VertXY::B
 	verts[1] = first[1];
 }
 
+void Graphics::GetDisplayRotatedXY(float &x,float &y)const
+{
+	//GetDisplayWidth(),GetDisplayHeight()
+	if( mDisplayRotation == Graphics::ROTATE_FRAME_BUFFER_90 )
+	{
+		std::swap(x,y);
+		y = GetDisplayHeight() - y;
+	}
+	else if( mDisplayRotation == Graphics::ROTATE_FRAME_BUFFER_180 )
+	{
+		x = GetDisplayWidth() - x;
+		y = GetDisplayHeight() - y;
+	}
+	else if( mDisplayRotation == Graphics::ROTATE_FRAME_BUFFER_270 )
+	{
+		std::swap(x,y);
+		x = GetDisplayWidth() - x;
+	}
+	else// what ever the HW is with no rotation.
+	{
+	}
+
+}
+
 void Graphics::SetDisplayRotation(DisplayRotation pDisplayRotation)
 {
 	// They want portrait, if hardware display is landscape, rotate 90, else don't.
 	if( pDisplayRotation == ROTATE_FRAME_PORTRAIT )
 	{
-		mCreateFlags = ROTATE_FRAME_BUFFER_0;// Assume is portrait by default.
+		mDisplayRotation = ROTATE_FRAME_BUFFER_0;// Assume is portrait by default.
 		if( mPhysical.Width > mPhysical.Height )
 		{
-			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is landscape
+			mDisplayRotation = ROTATE_FRAME_BUFFER_90;// hardware is landscape
 		}
 	}
-
-	if( pDisplayRotation == ROTATE_FRAME_LANDSCAPE )
+	else if( pDisplayRotation == ROTATE_FRAME_LANDSCAPE )
 	{
-		mCreateFlags = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
+		mDisplayRotation = ROTATE_FRAME_BUFFER_0; // Assume is landscape by default.
 		if( mPhysical.Width < mPhysical.Height )
 		{
-			mCreateFlags = ROTATE_FRAME_BUFFER_90;// hardware is portrait
+			mDisplayRotation = ROTATE_FRAME_BUFFER_90;// hardware is portrait
 		}
+	}
+	else
+	{
+		// Ok, they are forcing rotation.
+		mDisplayRotation = pDisplayRotation;
 	}
 
 	if( GetIsPortrait() )
@@ -257,6 +285,8 @@ void Graphics::SetDisplayRotation(DisplayRotation pDisplayRotation)
 		mReported.Width = mPhysical.Width;
 		mReported.Height = mPhysical.Height;
 	}
+
+    SetProjection2D();
 
 }
 
@@ -853,7 +883,6 @@ void Graphics::SetRenderingDefaults()
 	glViewport(0, 0, (GLsizei)mPhysical.Width, (GLsizei)mPhysical.Height);
 	glDepthRangef(0.0f,1.0f);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-    SetProjection2D();
 
 	// Always cull, because why not. :) Make code paths simple.
 	glEnable(GL_CULL_FACE);
@@ -865,6 +894,8 @@ void Graphics::SetRenderingDefaults()
 	glEnable(GL_BLEND);
 
 	glEnableVertexAttribArray((int)StreamIndex::VERTEX);//Always on
+
+    SetProjection2D();
 
 	CHECK_OGL_ERRORS();
 }
@@ -987,7 +1018,7 @@ void Graphics::SetProjection2D()
 	memset(mMatrices.projection,0,sizeof(mMatrices.projection));
 	mMatrices.projection[3][3] = 1;
 
-	if( mCreateFlags == ROTATE_FRAME_BUFFER_90 )
+	if( mDisplayRotation == ROTATE_FRAME_BUFFER_90 )
 	{
 		mMatrices.projection[0][1] = -2.0f / (float)mPhysical.Height;
 		mMatrices.projection[1][0] = -2.0f / (float)mPhysical.Width;
@@ -995,7 +1026,7 @@ void Graphics::SetProjection2D()
 		mMatrices.projection[3][0] = 1;
 		mMatrices.projection[3][1] = 1;
 	}
-	else if( mCreateFlags == ROTATE_FRAME_BUFFER_180 )
+	else if( mDisplayRotation == ROTATE_FRAME_BUFFER_180 )
 	{
 		mMatrices.projection[0][0] = -2.0f / (float)mPhysical.Width;
 		mMatrices.projection[1][1] = 2.0f / (float)mPhysical.Height;
@@ -1003,7 +1034,7 @@ void Graphics::SetProjection2D()
 		mMatrices.projection[3][0] = 1;
 		mMatrices.projection[3][1] = -1;
 	}
-	else if( mCreateFlags == ROTATE_FRAME_BUFFER_270 )
+	else if( mDisplayRotation == ROTATE_FRAME_BUFFER_270 )
 	{
 		mMatrices.projection[0][1] = 2.0f / (float)mPhysical.Height;
 		mMatrices.projection[1][0] = 2.0f / (float)mPhysical.Width;

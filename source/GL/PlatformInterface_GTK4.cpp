@@ -30,8 +30,8 @@ public:
 	void Signal_Activate(GtkApplication* app);
 	void Signal_Destroy(GtkApplication* app);
 	
-	void Signal_MouseMove(double x,double y);
-	void Signal_MouseButton(double x,double y,bool Pressed);
+	void Signal_MouseMove(float x,float y);
+	void Signal_MouseButton(float x,float y,bool Pressed);
 	void Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state);
 	void Signal_KeyReleased(guint keyval,guint keycode,GdkModifierType state);
 
@@ -182,12 +182,7 @@ void PlatformInterface_GTK4::Signal_Realize(GtkWidget *widget)
 	gtk_gl_area_make_current(GetArea());
 	mGraphics = new Graphics();
 
-	const int width = gtk_widget_get_width(mGL);
-	const int height = gtk_widget_get_height(mGL);
-
-	std::cout << "The size we got: " << width << "X" << height << "\n";
-
-	mGraphics->InitialiseGL(DESKTOP_EMULATION_WIDTH,DESKTOP_EMULATION_HEIGHT);
+	mGraphics->InitialiseGL(DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);
 	mUsersApplication->OnOpen(mGraphics);
 }
 
@@ -238,16 +233,19 @@ void PlatformInterface_GTK4::Signal_Destroy(GtkApplication* app)
 	mUsersApplication->SetExit();
 }
 
-void PlatformInterface_GTK4::Signal_MouseMove(double x,double y)
+void PlatformInterface_GTK4::Signal_MouseMove(float x,float y)
 {
-	mMouse.LastX = (float)x;
-	mMouse.LastY = (float)y;
+	mGraphics->GetDisplayRotatedXY(x,y);
+	mMouse.LastX = x;
+	mMouse.LastY = y;
 }
 
-void PlatformInterface_GTK4::Signal_MouseButton(double x,double y,bool Pressed)
+void PlatformInterface_GTK4::Signal_MouseButton(float x,float y,bool Pressed)
 {
 	ElementPtr root = mUsersApplication->GetRootElement();
 	assert(root);
+
+	mGraphics->GetDisplayRotatedXY(x,y);
 	root->TouchEvent(x,y,Pressed);
 }
 
