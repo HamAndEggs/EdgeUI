@@ -41,6 +41,11 @@ public:
     uint32_t GetWidth()const{return mWidth;}
     uint32_t GetHeight()const{return mHeight;}
 
+    std::string GetText()const{return mText;}
+
+    static std::string ClassID(){return "eui::Element";}
+    virtual std::string GetClassID()const{return ClassID();}
+
     const std::string GetID()const{return mID;}
     const ElementPtr GetParent()const{return mParent;}
 
@@ -61,6 +66,9 @@ public:
     bool GetIsActive()const{return mActive;}
 
     ElementPtr GetChildByID(const std::string_view& pID);
+    std::list<ElementPtr>& GetChildren(){return mChildren;}
+
+    uint32_t GetUserValue()const{return mUserValue;}
 
     ElementPtr SetPos(uint32_t pX,uint32_t pY);
     ElementPtr SetGrid(uint32_t pWidth,uint32_t pHeight);
@@ -78,6 +86,8 @@ public:
 
     ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
     ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
+
+    ElementPtr SetUserValue(uint32_t pUserValue){mUserValue = pUserValue;return this;}
 
     ElementPtr Attach(ElementPtr pElement);
     ElementPtr Remove(ElementPtr pElement);
@@ -138,13 +148,15 @@ public:
     ElementPtr SetOnKeyboard(OnKeyboardCB pOnKeyboardCB){mOnKeyboardCB = pOnKeyboardCB;return this;}
 
 private:
+
     ElementPtr mParent = nullptr;
     std::list<ElementPtr> mChildren;
-    std::string mID;                        //!< If set can be used to search from an element.
+    std::string mID;                        //!< If set can be used to search for an element.
     std::string mText;                      //!< If set, it is displayed, based on settings in the style.
     int mFont = 0;                          //!< The font to use to render text, if zero, will use parents. Used GetFont to fetch the font to render with.
     bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.
+    uint32_t mUserValue = 0;                //!< Allows a user to attach a value then read it later. This helps a lot for custom controls.
 
     Style mStyle;
     uint32_t mX = 0;
@@ -162,8 +174,8 @@ private:
     OnTouchedCB mOnTouchedCB = nullptr;
     OnKeyboardCB mOnKeyboardCB = nullptr;
 
-    void CalculateContentRectangle(const Rectangle& pParentRect);
 
+    virtual void CalculateContentRectangle(const Rectangle& pParentRect);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

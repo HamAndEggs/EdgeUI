@@ -116,6 +116,8 @@ public:
 	 */
     void DrawRectangle(const Rectangle& pRect,const Style& pStyle);
 
+	void DrawTick(const Rectangle& pRect,const Style& pStyle);
+
     void DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 1);
 
 	void DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour = COLOUR_WHITE);

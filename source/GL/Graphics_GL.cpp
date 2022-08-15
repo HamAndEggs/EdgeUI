@@ -477,18 +477,18 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 	}
 
 	// Now see if we need to draw a boarder.
-	if( pStyle.mBorder != COLOUR_NONE && pStyle.mBorderSize > 0 )
+	if( pStyle.mBorder != COLOUR_NONE && pStyle.mThickness > 0 )
 	{
 		if( pStyle.mRadius )
 		{
 			GLenum primType = GL_LINE_LOOP;
-			if( pStyle.mBorderSize == 1 )
+			if( pStyle.mThickness == 1 )
 			{
 				GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
 			}
 			else
 			{
-				GetRoundedRectangleBoarderPoints(pRect,mWorkBuffers.vertices,pStyle.mRadius,pStyle.mBorderSize);
+				GetRoundedRectangleBoarderPoints(pRect,mWorkBuffers.vertices,pStyle.mRadius,pStyle.mThickness);
 				primType = GL_TRIANGLE_STRIP;
 			}
 
@@ -535,7 +535,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
 			VertexPtr(2,GL_FLOAT,quad);
 
-			if( pStyle.mBorderSize == 1 )
+			if( pStyle.mThickness == 1 )
 			{
 				mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
 				glDrawArrays(GL_LINE_LOOP,0,4);
@@ -559,6 +559,30 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 		glDrawArrays(GL_LINE_LOOP,0,4);
 		CHECK_OGL_ERRORS();
 	}
+}
+
+void Graphics::DrawTick(const Rectangle& pRect,const Style& pStyle)
+{
+	Rectangle r = pRect.GetScaled(0.6f);
+	const float step = r.GetMinSize() * 0.25;
+
+	DrawLine(
+		r.left,
+		r.GetCenterY(),
+		r.left + step,
+		r.GetCenterY() + step,
+		pStyle.mForeground,
+		pStyle.mThickness
+	);
+
+	DrawLine(
+		r.left + step,
+		r.GetCenterY() + step,
+		r.right,
+		r.top,
+		pStyle.mForeground,
+		pStyle.mThickness
+	);
 }
 
 void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour)

@@ -66,8 +66,20 @@ struct Rectangle
         bottom-= pY;
     }
 
+    void MakeBox(bool pUseSmallestAxis = true)
+    {
+        if( (GetWidth() < GetHeight()) == pUseSmallestAxis )
+        {
+            bottom = top +  GetWidth();
+        }
+        else
+        {
+            right = left +  GetHeight();
+        }
+    }
+
     /**
-     * @brief Get the Scaled rect, 1 == orginal size, 0 == zero point at the center of orginal.
+     * @brief Get the Scaled rect, 1 == original size, 0 == zero point at the center of original.
      */
     Rectangle GetScaled(float pScale)const
     {
@@ -121,6 +133,11 @@ struct Rectangle
     float GetY(float pTween)const
     {
         return (top * (1.0f - pTween)) + (bottom * pTween);
+    }
+
+    float GetMinSize()const
+    {
+        return std::min(GetWidth(),GetHeight());
     }
 
 

@@ -17,7 +17,7 @@ public:
         s.mBackground = pColour;
         s.mBoarderStyle = eui::Style::BS_RAISED;
         s.mBorder = eui::COLOUR_WHITE;
-        s.mBorderSize = pBoarderSize;
+        s.mThickness = pBoarderSize;
         s.mRadius = pRadius;
 
         SetStyle(s);
@@ -26,6 +26,9 @@ public:
     }
 
     virtual ~Button(){};
+
+    static std::string ClassID(){return "eui::Button";}
+    virtual std::string GetClassID()const{return ClassID();}
 
     virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched)
     {

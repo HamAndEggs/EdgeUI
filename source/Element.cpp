@@ -210,24 +210,18 @@ void Element::Draw(Graphics* pGraphics)
 {
     if( mVisible )
     {
-        pGraphics->DrawRectangle(mContentRectangle,mStyle);
-
-        if( mText.size() > 0 )
+        if( (OnDraw(pGraphics,mContentRectangle) || (mOnDrawCB && mOnDrawCB(this,pGraphics,mContentRectangle))) == false )
         {
-            const int font = GetFont();
-            if( font > 0 )
+            pGraphics->DrawRectangle(mContentRectangle,mStyle);
+
+            if( mText.size() > 0 )
             {
-                pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
+                const int font = GetFont();
+                if( font > 0 )
+                {
+                    pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
+                }
             }
-        }
-
-        if( OnDraw(pGraphics,mContentRectangle) )
-            return;
-
-        if( mOnDrawCB )
-        {
-            if( mOnDrawCB(this,pGraphics,mContentRectangle) )
-                return;
         }
 
         for( auto& e : mChildren )
