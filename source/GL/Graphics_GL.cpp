@@ -345,7 +345,7 @@ void Graphics::FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const s
 
 	assert(font->mTexture);
 	EnableShader(mShaders.TextureAlphaOnly);
-	SetTransformIdentity();
+
 	mShaders.CurrentShader->SetTexture(font->mTexture);
 	mShaders.CurrentShader->SetGlobalColour(pColour);
 
@@ -413,7 +413,6 @@ Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)con
 
 void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 {
-	SetTransformIdentity();
 
 	if( pStyle.mTexture )
 	{
@@ -598,7 +597,7 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 	}
 
 	EnableShader(mShaders.TextureColour);
-	SetTransformIdentity();	
+
 	mShaders.CurrentShader->SetGlobalColour(pColour);
 	mShaders.CurrentShader->SetTexture(pTexture);
 
@@ -617,7 +616,6 @@ void Graphics::DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColo
 
 void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth)
 {
-	SetTransformIdentity();
 	if( pWidth < 2 )
 	{
 		const float quad[4] = {pFromX,pFromY,pToX,pToY};
@@ -688,6 +686,29 @@ void Graphics::DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour p
 		glDrawArrays(GL_TRIANGLE_FAN,0,6);
 		CHECK_OGL_ERRORS();
 	}
+}
+
+void Graphics::DrawRoundedLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth)
+{
+//	VertXY* verts = rBuffer.Restart(mRoundedRect.NUM_VERTICES);
+//
+//	float A = 0.0f;// This starts the circle at the top, so the first corner is the right top one.
+//	const float AD = mRoundedRect.ANGLE_INC;
+//
+//	const float size = pWidth;
+//	for( int n = 0 ; n < mRoundedRect.NUM_POINTS_PER_CORNER ; n++, verts++, A += AD )
+//	{
+//		const float sA = sin(A);
+//		const float cA = cos(A);
+//
+//		const float x = (1.0f - sA) * size;
+//		const float y = (1.0f - cA) * size;
+//
+//		verts->x = pRect.right - x;
+//		verts->y = pRect.top +   y;
+//	}
+//	A -= AD;
+//
 }
 
 uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
@@ -919,6 +940,7 @@ void Graphics::SetRenderingDefaults()
 	glEnableVertexAttribArray((int)StreamIndex::VERTEX);//Always on
 
     SetProjection2D();
+	SetTransformIdentity();
 
 	CHECK_OGL_ERRORS();
 }
@@ -1089,7 +1111,6 @@ void Graphics::SetTransform(const float pTransform[4][4])
 
 void Graphics::SetTransformIdentity()
 {
-	assert(mShaders.CurrentShader);
 	if( mMatrices.transformIsIdentity == false )
 	{
 		const float Identity[4][4] = 
@@ -1100,7 +1121,10 @@ void Graphics::SetTransformIdentity()
 			{0,0,0,1}
 		};
 		memcpy(mMatrices.transform,Identity,sizeof(float) * 4 * 4);
-		mShaders.CurrentShader->SetTransform(mMatrices.transform);
+		if( mShaders.CurrentShader )
+		{
+			mShaders.CurrentShader->SetTransform(mMatrices.transform);
+		}
 		mMatrices.transformIsIdentity = true;
 	}
 }

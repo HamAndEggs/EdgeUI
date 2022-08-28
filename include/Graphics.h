@@ -119,6 +119,7 @@ public:
 	void DrawTick(const Rectangle& pRect,const Style& pStyle);
 
     void DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 1);
+    void DrawRoundedLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 5);
 
 	void DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour = COLOUR_WHITE);
 
@@ -133,7 +134,7 @@ public:
 	uint32_t TextureCreate(int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat,bool pFiltered = false,bool pGenerateMipmaps = false);
 
 	/**
-	 * @brief Fill a sub rectangle, or the whole texture. Pixels is expected to be a continuous image data. So it's size is WidthxHeight of the region being updated.
+	 * @brief Fill a sub rectangle, or the whole texture. Pixels is expected to be a continuous image data. So it's size is Width by Height of the region being updated.
 	 * Pixels must be in the format that the texture was originally created with.
 	 */
 	void TextureFill(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels,TextureFormat pFormat = TextureFormat::FORMAT_RGB,bool pGenerateMips = false);
@@ -198,7 +199,7 @@ private:
 		GLShaderPtr TextureAlphaOnly;
 		GLShaderPtr RectangleBorder;
 
-		GLShaderPtr CurrentShader;
+		GLShaderPtr CurrentShader = nullptr;
 	}mShaders;
 
 	struct

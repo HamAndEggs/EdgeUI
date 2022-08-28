@@ -118,6 +118,11 @@ public:
                     {
                         mOnPressed(p,pID);
                     }
+
+                    if(mBoundID)
+                    {
+                        *mBoundID = pID;
+                    }
                 }
                 else
                 {
