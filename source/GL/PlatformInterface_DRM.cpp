@@ -331,6 +331,7 @@ void PlatformInterface_DRM::ProcessEvents()
 		struct input_event ev;
 		// Grab all messages and process befor going to next frame.
 		bool gotEvent = false;
+		bool cursorMoving = false;
 		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
 		{
 			// EV_SYN is a seperator of events.
@@ -357,10 +358,12 @@ void PlatformInterface_DRM::ProcessEvents()
 				{
 				case ABS_X:
 					mPointer.mCurrent.x = ev.value;
+					cursorMoving = true;
 					break;
 
 				case ABS_Y:
 					mPointer.mCurrent.y = ev.value;
+					cursorMoving = true;
 					break;
 				}
 				break;
@@ -373,7 +376,7 @@ void PlatformInterface_DRM::ProcessEvents()
 			float y = mPointer.mCurrent.y;
 
 //						mGraphics->GetDisplayRotatedXY(x,y);
-			root->TouchEvent(x,y,mPointer.mCurrent.touched);
+			root->CursorEvent(x,y,mPointer.mCurrent.touched,cursorMoving);
 		}
 
 	}

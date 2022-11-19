@@ -19,7 +19,7 @@ public:
         eui::Style s;
 
         s.mBackground = pColour;
-        s.mBoarderStyle = eui::Style::BS_RAISED;
+        s.mBoarderStyle = eui::BS_RAISED;
         s.mBorder = eui::COLOUR_WHITE;
         s.mThickness = pBoarderSize;
         s.mRadius = pRadius;
@@ -41,11 +41,11 @@ public:
         Rectangle r = pContentRect;
         r.MakeBox();
 
-        pGraphics->DrawRectangle(r,GetStyle());
+        DrawRectangle(pGraphics,r,GetStyle());
 
         if( mChecked )
         {
-            pGraphics->DrawTick(r,mTickStyle);
+            pGraphics->DrawTick(r,mTickStyle.mForeground,mTickStyle.mThickness);
         }
 
         r.left += r.GetWidth() * 1.1f;
@@ -54,9 +54,9 @@ public:
         return true;
     }
 
-    virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched)
+    virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched,bool pMoving)
     {
-        if( pTouched )
+        if( pTouched && pMoving == false )
         {
             mChecked = !mChecked;
             if( mBoundBool )

@@ -92,6 +92,13 @@ static const Alignment ALIGN_LEFT_BOTTOM		= SET_ALIGNMENT(ALIGN_MIN_EDGE,	ALIGN_
 static const Alignment ALIGN_CENTER_BOTTOM		= SET_ALIGNMENT(ALIGN_CENTER,	ALIGN_MAX_EDGE);
 static const Alignment ALIGN_RIGHT_BOTTOM		= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN_MAX_EDGE);
 
+enum BoarderStyle
+{
+	BS_SOLID,
+	BS_RAISED,
+	BS_DEPRESSED
+};
+
 // Basic 3D vertex with x,y,z and 32bit colour value.
 struct VertXYZC
 {

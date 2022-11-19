@@ -26,7 +26,6 @@ enum struct TextureFormat
 	FORMAT_ALPHA    //<! Alpha only, mainly used for font rendering.
 };
 
-struct Style;
 struct FreeTypeFont;
 class GLTexture;
 class GLShader;
@@ -112,11 +111,18 @@ public:
 	 * @brief Draws the rectangle based on style.
 	 * If texture is set, will fill with texture, otherwise
 	 * If background colour set, will fill rectangle.
+	 * If pUseForground is set, the foreground colour of the style is used.
 	 * Will not draw anything if no colour / texture set and no boarder defined.
 	 */
-    void DrawRectangle(const Rectangle& pRect,const Style& pStyle);
+    void DrawRectangle(	const Rectangle& pRect,
+						Colour pColour,
+						Colour pBorder = 0,
+						float pRadius = 0,
+						float pThickness = 0,
+						uint32_t pTexture = 0,
+						BoarderStyle pBoarderStyle = BS_SOLID);
 
-	void DrawTick(const Rectangle& pRect,const Style& pStyle);
+	void DrawTick(const Rectangle& pRect,Colour pColour,float pThickness);
 
     void DrawLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 1);
     void DrawRoundedLine(float pFromX,float pFromY,float pToX,float pToY,Colour pColour,float pWidth = 5);

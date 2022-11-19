@@ -21,7 +21,7 @@ public:
         eui::Style s;
 
         s.mBackground = pColour;
-        s.mBoarderStyle = eui::Style::BS_RAISED;
+        s.mBoarderStyle = eui::BS_RAISED;
         s.mBorder = eui::COLOUR_WHITE;
         s.mThickness = pBoarderSize;
         s.mRadius = pRadius;
@@ -44,11 +44,11 @@ public:
         Rectangle r = pContentRect;
         r.MakeBox();
 
-        pGraphics->DrawRectangle(r,GetStyle());
+        DrawRectangle(pGraphics,r,GetStyle());
 
         if( mChecked )
         {
-            pGraphics->DrawTick(r,mTickStyle);
+            pGraphics->DrawTick(r,mTickStyle.mForeground,mTickStyle.mThickness);
         }
 
         r.left += r.GetWidth() * 1.1f;
@@ -83,9 +83,9 @@ public:
         SetGrid(1,mNumButtons);
         RadioButtonPtr but = new RadioButton(pLabel,pID,pFont);
         but->SetPos(0,newRow);
-        but->SetOnTouched([this](ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)
+        but->SetOnTouched([this](ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched,bool pMoving)
         {
-            if( pTouched && pElement->GetClassID() == RadioButton::ClassID() )
+            if( pTouched && pMoving == false && pElement->GetClassID() == RadioButton::ClassID() )
             {
                 SetPressed(static_cast<RadioButtonPtr>(pElement)->GetUserValue());
                 return true;

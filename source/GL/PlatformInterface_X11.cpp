@@ -230,17 +230,17 @@ void PlatformInterface_X11::ProcessEvents()
 			break;
 
 		case MotionNotify:// Mouse movement
-//			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->CursorEvent(e.xmotion.x,e.xmotion.y,touched,true);
 			break;
 
 		case ButtonPress:
 			touched = true;
-			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->CursorEvent(e.xmotion.x,e.xmotion.y,touched,false);
 			break;
 
 		case ButtonRelease:
 			touched = false;
-			root->TouchEvent(e.xmotion.x,e.xmotion.y,touched);
+			root->CursorEvent(e.xmotion.x,e.xmotion.y,touched,false);
 			break;
 		}
 	}

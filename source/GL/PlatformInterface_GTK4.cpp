@@ -52,6 +52,7 @@ private:
 	{
 		float LastX = 0;
 		float LastY = 0;
+		bool Pressed = false;
 	}mMouse;
 };
 
@@ -235,9 +236,13 @@ void PlatformInterface_GTK4::Signal_Destroy(GtkApplication* app)
 
 void PlatformInterface_GTK4::Signal_MouseMove(float x,float y)
 {
+	ElementPtr root = mUsersApplication->GetRootElement();
+	assert(root);
+
 	mGraphics->GetDisplayRotatedXY(x,y);
 	mMouse.LastX = x;
 	mMouse.LastY = y;
+	root->CursorEvent(x,y,mMouse.Pressed,true);
 }
 
 void PlatformInterface_GTK4::Signal_MouseButton(float x,float y,bool Pressed)
@@ -245,8 +250,9 @@ void PlatformInterface_GTK4::Signal_MouseButton(float x,float y,bool Pressed)
 	ElementPtr root = mUsersApplication->GetRootElement();
 	assert(root);
 
+	mMouse.Pressed = Pressed;
 	mGraphics->GetDisplayRotatedXY(x,y);
-	root->TouchEvent(x,y,Pressed);
+	root->CursorEvent(x,y,Pressed,false);
 }
 
 void PlatformInterface_GTK4::Signal_KeyPressed(guint keyval,guint keycode,GdkModifierType state)

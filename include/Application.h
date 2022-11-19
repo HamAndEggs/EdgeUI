@@ -30,6 +30,7 @@ public:
     virtual Element* GetRootElement() = 0; 
 
     // Overload this for application specific custom rendering logic.
+    // For most applications this is not required because a custom control will be more suitible.
     virtual void OnFrame(Graphics* pGraphics,const Rectangle& pDisplayRectangle)
     {
         assert(pGraphics);

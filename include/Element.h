@@ -75,6 +75,7 @@ public:
     ElementPtr SetSpan(uint32_t pX,uint32_t pY);
 
     ElementPtr SetPadding(float pPadding);
+    ElementPtr SetPadding(float pX,float pY);
     ElementPtr SetPadding(float pLeft,float pRight,float pTop,float pBottom);
     ElementPtr SetPadding(const Rectangle& pPadding);
 
@@ -109,11 +110,13 @@ public:
 
     /**
      * @brief Will activate the control under the screen location and deal with being touched or released.
-     * The application will need to call this from the graphics touch event processing callback.
+     * Called a cursor event as the cursor can either be a mouse, screen or joypad.
+     * Using the name cursor to be more implemention agnostic.
      * Could also be used for automated testing with playback of events.
      * Will return true if handled, will call all children until one handles it if it did not handle it.
+     * This is called by the graphics backend. Application does not need to call this.
      */
-    bool TouchEvent(float pX,float pY,bool pTouched);
+    bool CursorEvent(float pX,float pY,bool pTouched,bool pMoving);
 
     /**
      * @brief When a key is pressed or released.
@@ -124,28 +127,31 @@ public:
 
     /**
      * @brief Override these functions to extend the functionality of a control to build your own element types.
-     * Return true to stop propagation of events to children.
+     * Return false to stop propagation of events to children.
      */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-    virtual bool OnDraw(Graphics* pGraphics,const Rectangle& pContentRect){return false;}
-    virtual bool OnUpdate(){return false;}
-    virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched){return false;}
+    virtual bool OnDraw(Graphics* pGraphics,const Rectangle& pContentRect);
+    virtual bool OnUpdate(const Rectangle& pContentRect){return false;}
+    virtual bool OnTouched(float pLocalX,float pLocalY,bool pTouched,bool pMoving){return false;}
     virtual bool OnKeyboard(char pCharacter,bool pPressed){return false;}
 #pragma GCC diagnostic pop
 
     /**
      * @brief As well as using inheritance to change an elements behaviour, we can use dependency injection for more simple control customisation.
      */
-    typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics,const Rectangle& pContentRect)> OnDrawCB;
-    typedef std::function<bool (ElementPtr pElement)>                                                   OnUpdateCB;
-    typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched)>         OnTouchedCB;
-    typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>                     OnKeyboardCB;
+    typedef std::function<bool (ElementPtr pElement,Graphics* pGraphics,const Rectangle& pContentRect)>         OnDrawCB;
+    typedef std::function<bool (ElementPtr pElement,const Rectangle& pContentRect)>                             OnUpdateCB;
+    typedef std::function<bool (ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched,bool pMoving)>    OnTouchedCB;
+    typedef std::function<bool (ElementPtr pElement,char pCharacter,bool pPressed)>                             OnKeyboardCB;
 
     ElementPtr SetOnDraw(OnDrawCB pOnDrawCB){mOnDrawCB = pOnDrawCB;return this;}
     ElementPtr SetOnUpdate(OnUpdateCB pOnUpdateCB){mOnUpdateCB = pOnUpdateCB;return this;}
     ElementPtr SetOnTouched(OnTouchedCB pOnTouchedCB){mOnTouchedCB = pOnTouchedCB;return this;}
     ElementPtr SetOnKeyboard(OnKeyboardCB pOnKeyboardCB){mOnKeyboardCB = pOnKeyboardCB;return this;}
+
+protected:
+    void DrawRectangle(Graphics* pGraphics,const Rectangle& pRect,const Style& pStyle,bool pUseForground = false);
 
 private:
 
@@ -157,6 +163,7 @@ private:
     bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.
     uint32_t mUserValue = 0;                //!< Allows a user to attach a value then read it later. This helps a lot for custom controls.
+    bool mAlreadyDrawing = false;           //!< Used to catch unintentional recursion. Will one day change API so can not happen.
 
     Style mStyle;
     uint32_t mX = 0;
@@ -173,7 +180,6 @@ private:
     OnUpdateCB mOnUpdateCB = nullptr;
     OnTouchedCB mOnTouchedCB = nullptr;
     OnKeyboardCB mOnKeyboardCB = nullptr;
-
 
     virtual void CalculateContentRectangle(const Rectangle& pParentRect);
 };

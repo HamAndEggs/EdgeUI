@@ -2,6 +2,7 @@
 #define Rectangle_H__
 
 #include <stdint.h>
+#include <algorithm>
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -93,6 +94,21 @@ struct Rectangle
     }
 
     /**
+     * @brief Get the Scaled rect, 1 == original size, 0 == zero point at the center of original.
+     */
+    Rectangle GetScaled(float pXScale,float pYScale)const
+    {
+        const float XScale = pXScale*0.5f;// Make it work for our lerp.
+        const float YScale = pYScale*0.5f;// Make it work for our lerp.
+        return Rectangle(
+            GetX(0.5f - XScale),
+            GetY(0.5f - YScale),
+            GetX(0.5f + XScale),
+            GetY(0.5f + YScale)
+            );
+    }
+
+    /**
      * @brief Enlarges the rect so that the point is contained
      */
     void AddPoint(float pX,float pY)
@@ -140,6 +156,21 @@ struct Rectangle
         return std::min(GetWidth(),GetHeight());
     }
 
+    float ClampX(float X)const
+    {
+        return std::clamp(X,left,right);
+    }
+
+    float ClampY(float Y)const
+    {
+        return std::clamp(Y,top,bottom);
+    }
+
+    void Clamp(float &X,float &Y)const
+    {
+        X = ClampX(X);
+        Y = ClampY(Y);
+    }
 
     float left = 0;
     float top = 0;

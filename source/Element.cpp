@@ -134,6 +134,15 @@ ElementPtr Element::SetPadding(float pPadding)
     return this;
 }
 
+ElementPtr Element::SetPadding(float pX,float pY)
+{
+    mPadding.left = pX;
+    mPadding.right = 1.0f - pX;
+    mPadding.top = pY;
+    mPadding.bottom = 1.0f - pY;
+    return this;
+}
+
 ElementPtr Element::SetPadding(float pLeft,float pRight,float pTop,float pBottom)
 {
     mPadding.left = pLeft;
@@ -190,68 +199,73 @@ void Element::Update()
 {
     if( mActive )
     {
-        if( OnUpdate() )
-            return;
-
-        if( mOnUpdateCB )
+        // I do not like the logic here.
+        bool propagateToChildren = OnUpdate(mContentRectangle) == false;
+        if( mOnUpdateCB && mOnUpdateCB(this,mContentRectangle) == false )
         {
-            if( mOnUpdateCB(this) )
-                return;
+            propagateToChildren = true;
         }
-
-        for( auto e : mChildren )
+        
+        if( propagateToChildren )
         {
-            e->Update();
+            for( auto e : mChildren )
+            {
+                e->Update();
+            }
         }
     }
 }
 
 void Element::Draw(Graphics* pGraphics)
 {
+    // Catch people causing infinite loops by calling draw within other draw functions / overloads / callbacks.
+    if( mAlreadyDrawing )
+    {
+        THROW_MEANINGFUL_EXCEPTION("Draw called when already drawing. You have a recusion error.");
+    }
+
+    mAlreadyDrawing = true;
     if( mVisible )
     {
-        if( (OnDraw(pGraphics,mContentRectangle) || (mOnDrawCB && mOnDrawCB(this,pGraphics,mContentRectangle))) == false )
+        // I do not like the logic here.
+        bool propagateToChildren = OnDraw(pGraphics,mContentRectangle) == false;
+        if( mOnDrawCB && mOnDrawCB(this,pGraphics,mContentRectangle) == false )
         {
-            pGraphics->DrawRectangle(mContentRectangle,mStyle);
+            propagateToChildren = true;
+        }
 
-            if( mText.size() > 0 )
+        if( propagateToChildren )
+        {
+            for( auto& e : mChildren )
             {
-                const int font = GetFont();
-                if( font > 0 )
-                {
-                    pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
-                }
+                e->Draw(pGraphics);
             }
         }
-
-        for( auto& e : mChildren )
-        {
-            e->Draw(pGraphics);
-        }
     }
+    mAlreadyDrawing = false;
 }
 
-bool Element::TouchEvent(float pX,float pY,bool pTouched)
+bool Element::CursorEvent(float pX,float pY,bool pTouched,bool pMoving)
 {
     if( mContentRectangle.ContainsPoint(pX,pY) )
     {
         const float localX = pX - mContentRectangle.left;
         const float localY = pY - mContentRectangle.top;
-        if( OnTouched(localX,localY,pTouched) )
+        if( OnTouched(localX,localY,pTouched,pMoving) )
         {
             return true;
         }
 
         if( mOnTouchedCB )
         {
-            if( mOnTouchedCB(this,localX,localY,pTouched) )
+            if( mOnTouchedCB(this,localX,localY,pTouched,pMoving) )
                 return true;
         }
     }
 
     for( auto& e : mChildren )
     {
-        if( e->TouchEvent(pX,pY,pTouched) )
+        if( e->CursorEvent(pX,pY,pTouched,pMoving) )
         {
             return true;
         }
@@ -287,6 +301,34 @@ bool Element::KeyboardEvent(char pCharacter,bool pPressed)
     return false;
 }
 
+bool Element::OnDraw(Graphics* pGraphics,const Rectangle& pContentRect)
+{
+    DrawRectangle(pGraphics,mContentRectangle,mStyle);
+
+    if( mText.size() > 0 )
+    {
+        const int font = GetFont();
+        if( font > 0 )
+        {
+            pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
+        }
+    }
+    return false;
+}
+
+void Element::DrawRectangle(Graphics* pGraphics,const Rectangle& pRect,const Style& pStyle,bool pUseForground)
+{
+    assert(pGraphics);
+    pGraphics->DrawRectangle(pRect,
+						pUseForground ? pStyle.mForeground:pStyle.mBackground,
+						pStyle.mBorder,
+						pStyle.mRadius,
+						pStyle.mThickness,
+						pStyle.mTexture,
+						pStyle.mBoarderStyle);
+
+}
+
 void Element::CalculateContentRectangle(const Rectangle& pParentRect)
 {
     const float cellWidth = 1.0f / GetParentWidth();
@@ -302,6 +344,8 @@ void Element::CalculateContentRectangle(const Rectangle& pParentRect)
         contentRect.GetX(mPadding.right),
         contentRect.GetY(mPadding.bottom));
 }
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }//namespace eui{

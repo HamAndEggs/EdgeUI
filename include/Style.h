@@ -11,13 +11,6 @@ struct Style
     Style() = default;
     Style(Colour pColour,float pRadius){mBackground = pColour;mRadius = pRadius;}
 
-    enum BoarderStyle
-    {
-        BS_SOLID,
-        BS_RAISED,
-        BS_DEPRESSED
-    };
-
     Colour mForeground = COLOUR_WHITE;          //!< If alpha is set to zero then foreground will not be rendered.
     Colour mBackground = COLOUR_NONE;           //!< If alpha is set to zero then background will not be rendered.
     Colour mBorder = COLOUR_NONE;               //!< If alpha is set to zero then background will not be rendered.

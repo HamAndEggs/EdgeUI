@@ -3,7 +3,6 @@
 #include "GLDiagnostics.h"
 #include "GLShader.h"
 #include "GLTexture.h"
-#include "Style.h"
 #include "FreeTypeFont.h"
 #include "../TinyPNG.h"
 
@@ -411,26 +410,26 @@ Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)con
 	return font->GetRect(pText);
 }
 
-void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
+void Graphics::DrawRectangle(const Rectangle& pRect,Colour pColour,Colour pBorder,float pRadius,float pThickness,uint32_t pTexture,BoarderStyle pBoarderStyle)
 {
 
-	if( pStyle.mTexture )
+	if( pTexture )
 	{
 		// Later this will respect the rounded corners and board of the style.
-		if( pStyle.mRadius <= 0.0f )
+		if( pRadius <= 0.0f )
 		{
-			DrawTexture(pRect,pStyle.mTexture,pStyle.mBackground);
+			DrawTexture(pRect,pTexture,pColour);
 		}
 		else
 		{
 			EnableShader(mShaders.TextureColour);
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
-			mShaders.CurrentShader->SetTexture(pStyle.mTexture);
+			mShaders.CurrentShader->SetGlobalColour(pColour);
+			mShaders.CurrentShader->SetTexture(pTexture);
 			SetTextureTransformIdentity();
 
-			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pRadius);
 			const Rectangle uv = {0,0,1,1};
-			GetRoundedRectanglePoints(uv,mWorkBuffers.uvs,pStyle.mRadius);
+			GetRoundedRectanglePoints(uv,mWorkBuffers.uvs,pRadius);
 
 			VertexPtr(2,GL_FLOAT,mWorkBuffers.vertices.Data());
 
@@ -446,17 +445,17 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 
 		}
 	}
-	else if( pStyle.mBackground != COLOUR_NONE )
+	else if( pColour != COLOUR_NONE )
 	{
-		if( pStyle.mRadius )
+		if( pRadius )
 		{
-			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+			GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pRadius);
 
 			const int numPoints = mWorkBuffers.vertices.Used();
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
 			EnableShader(mShaders.ColourOnly);
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			mShaders.CurrentShader->SetGlobalColour(pColour);
 
 			VertexPtr(2,GL_FLOAT,points);
 			glDrawArrays(GL_TRIANGLE_FAN,0,numPoints);
@@ -468,7 +467,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			pRect.GetQuad(quad);
 
 			EnableShader(mShaders.ColourOnly);
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			mShaders.CurrentShader->SetGlobalColour(pColour);
 			VertexPtr(2,GL_FLOAT,quad);
 			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			CHECK_OGL_ERRORS();
@@ -476,18 +475,18 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 	}
 
 	// Now see if we need to draw a boarder.
-	if( pStyle.mBorder != COLOUR_NONE && pStyle.mThickness > 0 )
+	if( pBorder != COLOUR_NONE && pThickness > 0 )
 	{
-		if( pStyle.mRadius )
+		if( pRadius )
 		{
 			GLenum primType = GL_LINE_LOOP;
-			if( pStyle.mThickness == 1 )
+			if( pThickness == 1 )
 			{
-				GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pStyle.mRadius);
+				GetRoundedRectanglePoints(pRect,mWorkBuffers.vertices,pRadius);
 			}
 			else
 			{
-				GetRoundedRectangleBoarderPoints(pRect,mWorkBuffers.vertices,pStyle.mRadius,pStyle.mThickness);
+				GetRoundedRectangleBoarderPoints(pRect,mWorkBuffers.vertices,pRadius,pThickness);
 				primType = GL_TRIANGLE_STRIP;
 			}
 
@@ -495,20 +494,20 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			const VertXY* points = mWorkBuffers.vertices.Data();
 
 			EnableShader(mShaders.RectangleBorder);
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+			mShaders.CurrentShader->SetGlobalColour(pBorder);
 			VertexPtr(2,GL_FLOAT,points);
 
 			const void* colours = mRoundedRect.BoarderWhite.data();
-			switch (pStyle.mBoarderStyle)
+			switch (pBoarderStyle)
 			{
-			case Style::BS_SOLID:
+			case BS_SOLID:
 				break;
 			
-			case Style::BS_RAISED:
+			case BS_RAISED:
 				colours = mRoundedRect.BoarderRaised.data();
 				break;
 
-			case Style::BS_DEPRESSED:
+			case BS_DEPRESSED:
 				colours = mRoundedRect.BoarderDepressed.data();
 				break;
 			}
@@ -531,12 +530,12 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 			pRect.GetQuad(quad);
 
 			EnableShader(mShaders.ColourOnly);
-			mShaders.CurrentShader->SetGlobalColour(pStyle.mBackground);
+			mShaders.CurrentShader->SetGlobalColour(pColour);
 			VertexPtr(2,GL_FLOAT,quad);
 
-			if( pStyle.mThickness == 1 )
+			if( pThickness == 1 )
 			{
-				mShaders.CurrentShader->SetGlobalColour(pStyle.mBorder);
+				mShaders.CurrentShader->SetGlobalColour(pBorder);
 				glDrawArrays(GL_LINE_LOOP,0,4);
 				CHECK_OGL_ERRORS();
 			}
@@ -560,7 +559,7 @@ void Graphics::DrawRectangle(const Rectangle& pRect,const Style& pStyle)
 	}
 }
 
-void Graphics::DrawTick(const Rectangle& pRect,const Style& pStyle)
+void Graphics::DrawTick(const Rectangle& pRect,Colour pColour,float pThickness)
 {
 	Rectangle r = pRect.GetScaled(0.6f);
 	const float step = r.GetMinSize() * 0.25;
@@ -570,8 +569,8 @@ void Graphics::DrawTick(const Rectangle& pRect,const Style& pStyle)
 		r.GetCenterY(),
 		r.left + step,
 		r.GetCenterY() + step,
-		pStyle.mForeground,
-		pStyle.mThickness
+		pColour,
+		pThickness
 	);
 
 	DrawLine(
@@ -579,8 +578,8 @@ void Graphics::DrawTick(const Rectangle& pRect,const Style& pStyle)
 		r.GetCenterY() + step,
 		r.right,
 		r.top,
-		pStyle.mForeground,
-		pStyle.mThickness
+		pColour,
+		pThickness
 	);
 }
 
