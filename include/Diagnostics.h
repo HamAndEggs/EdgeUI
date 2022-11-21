@@ -2,6 +2,8 @@
 #define Diagnostics_H__
 
 #include <iostream>
+#include <vector>
+#include <string>
 
 #ifdef VERBOSE_BUILD
 	#define VERBOSE_MESSAGE(THE_MESSAGE__)	{std::clog << __LINE__ << ":" << THE_MESSAGE__ << "\n";}
@@ -15,13 +17,23 @@
 
 inline std::string GetClassName(const std::string& prettyFunction)
 {
-    size_t colons = prettyFunction.find_last_of("::");
-    if (colons == std::string::npos)
-        return "::";
-    size_t begin = prettyFunction.substr(0,colons).rfind(" ") + 1;
-    size_t end = colons - begin;
+    std::vector<std::string> res;
+    for (size_t p = 0, q = 0; p != prettyFunction.npos; p = q)
+	{
+		const std::string part(prettyFunction.substr(p + (p != 0), (q = prettyFunction.find("::", p + 1)) - p - (p != 0)));
+		if( part.size() > 0 )
+		{
+	        res.push_back(part);
+		}
+	}
 
-    return prettyFunction.substr(begin,end);
+    if( res.size() == 0 )
+        return "::";
+
+    if( res.size() == 1 )
+        return res[0];
+
+    return res[1];
 }
 
 #define SET_DEFAULT_ID()		{SetID(GetClassName(__PRETTY_FUNCTION__) + ":" + std::to_string((uint64_t(this))));}
