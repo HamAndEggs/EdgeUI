@@ -98,13 +98,22 @@ ElementPtr Element::SetPos(uint32_t pX,uint32_t pY)
 
 ElementPtr Element::SetGrid(uint32_t pWidth,uint32_t pHeight)
 {
+    mAutoGrid = false;
     mWidth = pWidth;
     mHeight = pHeight;
     return this;
 }
 
+ElementPtr Element::SetAutoGrid(bool pHorizontal)
+{
+    mAutoGrid = true;
+    mAutoGridHorizontal = pHorizontal;
+    return this;
+}
+
 ElementPtr Element::SetSpan(uint32_t pX,uint32_t pY)
 {
+    mAutoGrid = false;
     mSpanX = pX;
     mSpanY = pY;
     return this;
@@ -188,6 +197,20 @@ ElementPtr Element::Remove(ElementPtr pElement)
 
 void Element::Layout(const Rectangle& pParentRect)
 {
+    if( mAutoGrid && mChildren.size() > 0 )
+    {
+        if( mAutoGridHorizontal )
+        {
+            mWidth = mChildren.size();
+            mHeight = 1;
+        }
+        else
+        {
+            mWidth = 1;
+            mHeight = mChildren.size();
+        }
+    }
+
     CalculateContentRectangle(pParentRect);
     for( auto& e : mChildren )
     {

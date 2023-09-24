@@ -70,7 +70,7 @@ class RadioButtonGroup : public Element
 {
 public:
 
-    RadioButtonGroup(){}
+    RadioButtonGroup(){SetAutoGrid();}
     virtual ~RadioButtonGroup(){}
 
     static std::string ClassID(){return "eui::RadioButtonGroup";}
@@ -78,11 +78,8 @@ public:
 
     RadioButtonGroupPtr Add(const std::string &pLabel,uint32_t pID,int pFont = 0)
     {
-        const uint32_t newRow = mNumButtons;
-        mNumButtons++;
-        SetGrid(1,mNumButtons);
         RadioButtonPtr but = new RadioButton(pLabel,pID,pFont);
-        but->SetPos(0,newRow);
+        but->SetPos(0,GetNumChildren());
         but->SetOnTouched([this](ElementPtr pElement,float pLocalX,float pLocalY,bool pTouched,bool pMoving)
         {
             if( pTouched && pMoving == false && pElement->GetClassID() == RadioButton::ClassID() )
@@ -136,7 +133,6 @@ public:
 private:
     OnPressed mOnPressed = nullptr;
     uint32_t *mBoundID = nullptr;
-    int mNumButtons = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -67,11 +67,13 @@ public:
 
     ElementPtr GetChildByID(const std::string_view& pID);
     std::list<ElementPtr>& GetChildren(){return mChildren;}
+    size_t GetNumChildren(){return mChildren.size();}
 
     uint32_t GetUserValue()const{return mUserValue;}
 
     ElementPtr SetPos(uint32_t pX,uint32_t pY);
     ElementPtr SetGrid(uint32_t pWidth,uint32_t pHeight);
+    ElementPtr SetAutoGrid(bool pHorizontal = false);       // Will cause the system to use a 1XN grid where N is the number of children.
     ElementPtr SetSpan(uint32_t pX,uint32_t pY);
 
     ElementPtr SetPadding(float pPadding);
@@ -164,6 +166,8 @@ private:
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.
     uint32_t mUserValue = 0;                //!< Allows a user to attach a value then read it later. This helps a lot for custom controls.
     bool mAlreadyDrawing = false;           //!< Used to catch unintentional recursion. Will one day change API so can not happen.
+    bool mAutoGrid = false;                 //!< If true the grid size is based on the number of children.
+    bool mAutoGridHorizontal = false;       //!< States if the grid is horizontal or vertical.
 
     Style mStyle;
     uint32_t mX = 0;
