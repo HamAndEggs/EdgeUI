@@ -1,0 +1,45 @@
+{
+	"configurations":
+	{
+		"release":
+		{
+			"default":true,
+			"target":"library",
+            "include": [
+                "./source",
+                "./include",
+                "/usr/include/freetype2/",
+                "/usr/include",
+                "./"
+            ],
+            "define": [
+                "NDEBUG",
+                "RELEASE_BUILD"
+            ]
+		},
+		"debug":
+		{
+			"target":"library",
+            "include": [
+                "./source",
+                "./include",
+                "/usr/include/freetype2/",
+                "/usr/include",
+                "./"
+            ],
+            "define": [
+                "DEBUG_BUILD"   
+            ]
+		}
+	},
+    "source_files":
+	[
+        "./source/Element.cpp",
+        "./source/TinyPNG.cpp",
+        "./source/GL/FreeTypeFont.cpp",
+        "./source/GL/GLDiagnostics.cpp",
+        "./source/GL/GLShader.cpp",
+        "./source/GL/Graphics_GL.cpp",
+        "./source/GL/PlatformInterface_GTK4.cpp"
+	]
+}

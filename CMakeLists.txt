@@ -26,7 +26,8 @@ set( COMMON_DEBUG_COMPILE_OPTIONS
     -Wno-unused-variable)
 
 set( COMMON_DEBUG_DEFINES
-    -DVERBOSE_BUILD)
+    -DDEBUG_BUILD)
+#    -DVERBOSE_BUILD)
 #    -DVERBOSE_SHADER_BUILD)
 
 #*************** X11 Target

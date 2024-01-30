@@ -24,6 +24,7 @@ public:
     // You implement these.
     virtual void OnOpen(Graphics* pGraphics) = 0;
     virtual void OnClose() = 0;
+    virtual void OnUpdate(){};
 
     // This is used to fetch the current root UI element.
     // The platform code does not and should not retain this pointer as the app may change it.
@@ -37,6 +38,7 @@ public:
         Element* root = GetRootElement();
         if( root )
         {
+            OnUpdate(); // Tick that app, if it wants it.
             root->Layout(pDisplayRectangle);
             root->Update();
             pGraphics->BeginFrame();
