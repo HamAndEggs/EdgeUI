@@ -11,8 +11,10 @@
 //#include <gtk/gtkglarea.h>
 #include <thread>
 
-#define DESKTOP_EMULATION_WIDTH 1024
-#define DESKTOP_EMULATION_HEIGHT 600
+#ifndef DESKTOP_EMULATION_WIDTH
+	#define DESKTOP_EMULATION_WIDTH 1024
+	#define DESKTOP_EMULATION_HEIGHT 600
+#endif
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
