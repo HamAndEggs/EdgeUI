@@ -11,11 +11,6 @@
 //#include <gtk/gtkglarea.h>
 #include <thread>
 
-#ifndef DESKTOP_EMULATION_WIDTH
-	#define DESKTOP_EMULATION_WIDTH 1024
-	#define DESKTOP_EMULATION_HEIGHT 600
-#endif
-
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 class PlatformInterface_GTK4
@@ -185,7 +180,7 @@ void PlatformInterface_GTK4::Signal_Realize(GtkWidget *widget)
 	gtk_gl_area_make_current(GetArea());
 	mGraphics = new Graphics();
 
-	mGraphics->InitialiseGL(DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);
+	mGraphics->InitialiseGL(mUsersApplication->GetEmulatedWidth(), mUsersApplication->GetEmulatedHeight());
 	mUsersApplication->OnOpen(mGraphics);
 }
 
@@ -194,7 +189,7 @@ void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 	mWindow = gtk_application_window_new (app);
 	g_signal_connect(mWindow, "destroy", G_CALLBACK(DestroyCB), this);
 	gtk_window_set_title (GTK_WINDOW (mWindow), "EdgeUI");
-	gtk_window_set_default_size (GTK_WINDOW (mWindow), DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);
+	gtk_window_set_default_size (GTK_WINDOW (mWindow), mUsersApplication->GetEmulatedWidth(), mUsersApplication->GetEmulatedHeight());
 
 	mGrid = gtk_grid_new();
 	gtk_window_set_child (GTK_WINDOW (mWindow), mGrid);
@@ -202,7 +197,7 @@ void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 	mGL = gtk_gl_area_new();
     gtk_widget_set_hexpand(mGL, TRUE);
     gtk_widget_set_vexpand(mGL, TRUE);
-	gtk_widget_set_size_request (mGL, DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT);	
+	gtk_widget_set_size_request (mGL, mUsersApplication->GetEmulatedWidth(), mUsersApplication->GetEmulatedHeight());	
 	g_object_set(mGL, "use-es", TRUE, NULL);
 	g_object_set(mGL, "has-depth-buffer", TRUE, NULL);
 	g_object_set(mGL, "has-stencil-buffer", TRUE, NULL);

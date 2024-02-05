@@ -59,6 +59,9 @@ public:
     // Will return when the app is done, after OnClose is called. Just delete your object and return.
     static void MainLoop(Application* pApplication);
 
+    virtual int GetEmulatedWidth()const{return 1024;}
+    virtual int GetEmulatedHeight()const{return 600;}
+
 private:
     bool mKeepGoing = true;
 

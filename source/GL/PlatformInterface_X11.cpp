@@ -13,10 +13,6 @@
 #include <assert.h>
 #include <thread>
 
-#ifndef DESKTOP_EMULATION_WIDTH
-	#define DESKTOP_EMULATION_WIDTH 1024
-	#define DESKTOP_EMULATION_HEIGHT 600
-#endif
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 class PlatformInterface_X11 : public Graphics
@@ -37,8 +33,8 @@ public:
 	 */
 	void SwapBuffers();
 
-	int GetWidth()const{return DESKTOP_EMULATION_WIDTH;}
-	int GetHeight()const{return DESKTOP_EMULATION_HEIGHT;}
+	int GetWidth()const{return mUsersApplication->GetEmulatedWidth();}
+	int GetHeight()const{return mUsersApplication->GetEmulatedHeight();}
 
 
 private:
@@ -148,7 +144,7 @@ void PlatformInterface_X11::InitialiseDisplay()
 					mXDisplay,
 					RootWindow(mXDisplay, mVisualInfo->screen),
 					10, 10,
-					DESKTOP_EMULATION_WIDTH, DESKTOP_EMULATION_HEIGHT,
+					mUsersApplication->GetEmulatedWidth(), mUsersApplication->GetEmulatedHeight(),
 					0, mVisualInfo->depth, InputOutput, mVisualInfo->visual,
 					CWBorderPixel|CWColormap|CWEventMask,
 					&mWindowAttributes );
