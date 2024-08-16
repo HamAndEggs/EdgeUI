@@ -375,7 +375,7 @@ Rectangle FreeTypeFont::GetRect(const std::string_view& pText)const
 			const float py = g.y_off;
 
 			r.AddPoint(px,py);
-			r.AddPoint(px + g.width,py + g.height);
+			r.AddPoint(px + g.width-0.5,py + g.height-0.5);
 
 			x += g.advance;
 		}
