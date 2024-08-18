@@ -61,10 +61,10 @@ public:
 
     virtual int GetEmulatedWidth()const{return 1024;}
     virtual int GetEmulatedHeight()const{return 600;}
+    virtual const char* GetName()const{return "edge.ui";}
 
 private:
     bool mKeepGoing = true;
-
 };
 
 

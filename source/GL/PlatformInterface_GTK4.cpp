@@ -115,7 +115,7 @@ static void KeyReleasedCB(GtkEventControllerKey *controller,guint keyval,guint k
 
 PlatformInterface_GTK4::PlatformInterface_GTK4(Application* pApplication) : mUsersApplication(pApplication)
 {
-	mGtk4Application = gtk_application_new ("com.hex-edge.ui", G_APPLICATION_DEFAULT_FLAGS);
+	mGtk4Application = gtk_application_new (pApplication->GetName(), G_APPLICATION_DEFAULT_FLAGS);
 	g_signal_connect(mGtk4Application, "activate", G_CALLBACK(ActivateCB), this);
 
 	mContext = g_main_context_default ();
