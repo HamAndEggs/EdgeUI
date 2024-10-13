@@ -197,7 +197,7 @@ void PlatformInterface_GTK4::Signal_Activate(GtkApplication* app)
 	mGL = gtk_gl_area_new();
     gtk_widget_set_hexpand(mGL, TRUE);
     gtk_widget_set_vexpand(mGL, TRUE);
-	gtk_widget_set_size_request (mGL, mUsersApplication->GetEmulatedWidth(), mUsersApplication->GetEmulatedHeight());	
+	gtk_widget_set_size_request (mGL, mUsersApplication->GetEmulatedWidth()+1, mUsersApplication->GetEmulatedHeight()+1);
 	g_object_set(mGL, "use-es", TRUE, NULL);
 	g_object_set(mGL, "has-depth-buffer", TRUE, NULL);
 	g_object_set(mGL, "has-stencil-buffer", TRUE, NULL);

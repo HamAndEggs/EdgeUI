@@ -18,6 +18,11 @@ constexpr Colour MakeColour(uint8_t pR,uint8_t pG,uint8_t pB,uint8_t pA = 255)
     return (pA<<24) | (pR<<16) | (pG<<8) | (pB<<0);
 }
 
+inline Colour MakeColour(const std::string& hex)
+{
+    return (Colour)std::stoul(hex,0,16);
+}
+
 constexpr uint8_t GetAlpha(const Colour pColour)
 {
     return (pColour&0xff000000)>>24;

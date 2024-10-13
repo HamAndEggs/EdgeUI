@@ -40,6 +40,179 @@ namespace eui{
     #define COUNT_DELETE()
 #endif
 
+Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
+{
+    for(const auto &child : root.mObject)
+    {
+    // First check for the properties we know about, and then scan for child objects.
+        if( child.first == "pos" )
+        {
+            const tinyjson::JsonValue &pos = child.second;
+            if( pos.GetType() != tinyjson::JsonValueType::ARRAY )
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements position data in json file is not an array");
+            }
+
+            if( pos.mArray.size() != 2 )
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements position array is not two just two elements");
+            }
+
+            SetPos(pos[0].GetInt32(),pos[1].GetInt32());
+        }
+        else if( child.first == "grid" )
+        {
+            const tinyjson::JsonValue &grid = child.second;
+            if( grid.GetType() == tinyjson::JsonValueType::ARRAY )
+            {
+                if( grid.mArray.size() != 2 )
+                {
+                    THROW_MEANINGFUL_EXCEPTION("Elements position array is not two just two elements");
+                }
+                SetGrid(grid[0].GetInt32(),grid[1].GetInt32());
+            }
+            else if( grid.GetType() == tinyjson::JsonValueType::BOOLEAN )
+            {
+                SetAutoGrid(grid.GetBoolean());
+            }
+            else
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements grid data in json file is not an array or a boolean");
+            }
+        }
+        else if( child.first == "span" )
+        {
+            const tinyjson::JsonValue &span = child.second;
+            if( span.GetType() != tinyjson::JsonValueType::ARRAY )
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements span data in json file is not an array");
+            }
+
+            if( span.mArray.size() != 2 )
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements span array is not two just two elements");
+            }
+
+            SetSpan(span[0].GetInt32(),span[1].GetInt32());
+        }
+        else if( child.first == "padding" )
+        {
+            const tinyjson::JsonValue &padding = child.second;
+            if( padding.GetType() == tinyjson::JsonValueType::ARRAY )
+            {
+                if( padding.mArray.size() == 2 )
+                {
+                    SetPadding(padding[0].GetFloat(),padding[1].GetFloat());
+                }
+                else if( padding.mArray.size() == 4 )
+                {
+                    SetPadding(padding[0].GetFloat(),padding[1].GetFloat(),padding[2].GetFloat(),padding[3].GetFloat());
+                }
+                else
+                {
+                    THROW_MEANINGFUL_EXCEPTION("Elements position array is not two just two elements");
+                }
+
+            }
+            else if( padding.GetType() == tinyjson::JsonValueType::NUMBER )
+            {
+                SetPadding(padding.GetFloat());
+            }
+            else
+            {
+                THROW_MEANINGFUL_EXCEPTION("Elements padding data in json file is not an array or a number");
+            }
+        }
+        else if( child.first == "text" )
+        {
+            SetText(child.second.GetString());
+    //        std::cout << "Set text:" << GetText() << "\n";
+    //    ElementPtr SetTextF(const char* pFmt,...);
+        }
+        else if( child.first == "visible" )
+        {
+    //    ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
+        }
+        else if( child.first == "active" )
+        {
+    //  ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
+        }
+        else if( child.first == "user_value" )
+        {
+    //    ElementPtr SetUserValue(uint32_t pUserValue){mUserValue = pUserValue;return this;}
+        }
+        else if( child.first == "style" )
+        {
+            const tinyjson::JsonValue &fStyle = child.second;
+            Style aStyle;
+
+            if( fStyle.HasValue("foreground") )
+            {
+                aStyle.mForeground = MakeColour(fStyle["foreground"].GetString());
+            }
+
+            if( fStyle.HasValue("background") )
+            {
+                const std::string c = fStyle["background"].GetString();
+                aStyle.mBackground = MakeColour(c);
+            }
+
+            if( fStyle.HasValue("border") )
+            {
+                const std::string c = fStyle["border"].GetString();
+                aStyle.mBorder = MakeColour(c);
+                VERBOSE_MESSAGE("thickness " << aStyle.mBorder);
+            }
+
+            if( fStyle.HasValue("radius") )
+            {
+                aStyle.mRadius = fStyle["radius"].GetFloat();
+                VERBOSE_MESSAGE("radius " << aStyle.mRadius);
+            }
+
+            if( fStyle.HasValue("thickness") )
+            {
+                aStyle.mThickness = fStyle["thickness"].GetInt32();
+                VERBOSE_MESSAGE("thickness " << aStyle.mThickness);
+            }
+
+            if( fStyle.HasValue("font") )
+            {
+                const tinyjson::JsonValue &font = fStyle["font"];
+                if(font.GetType() == tinyjson::JsonValueType::OBJECT)
+                {
+                    aStyle.mFont = pGraphics->FontLoad(font["file"].GetString(),font["size"].GetUInt32());                    
+                }
+                else
+                {
+                THROW_MEANINGFUL_EXCEPTION("Font in style is not an object");
+                }
+            }
+            SetStyle(aStyle);
+
+
+    //    Colour mForeground = COLOUR_WHITE;          //!< If alpha is set to zero then foreground will not be rendered.
+    //    Colour mBackground = COLOUR_NONE;           //!< If alpha is set to zero then background will not be rendered.
+    //    Colour mBorder = COLOUR_NONE;               //!< If alpha is set to zero then background will not be rendered.
+    //    float mRadius = 0;                          //!< If background is rendered will give the rectangle rounded edges.
+    //    float mThickness = 0;                      //!< if boarder is rendered, will be the width in pixels. For lines, drawn with this mThickness.
+    //    BoarderStyle mBoarderStyle = BS_SOLID;      //!< Used for buttons and content groups, normally you'll use BS_SOLID.
+    //    Alignment mAlignment = ALIGN_CENTER_CENTER; //!< How to position content in the content rect. For content scaled to the size of the content this will not have an effect.
+    //    uint32_t mTexture = 0;                      //!< If set, will be scaled to fit content rect. If mBackground colour is set, will be modulated against that.
+        }
+        else
+        {// Assume all else is a new child element.
+            ElementPtr e = new Element(child.second,pGraphics);
+            e->SetID(child.first);
+            Attach(e);
+            VERBOSE_MESSAGE("Added child:" << child.first);
+        }
+    }
+
+    VERBOSE_MESSAGE("Finished loading UI file");
+}
+
+
 Element::Element(const Style& pStyle)
 {
     SET_DEFAULT_ID();
@@ -75,18 +248,18 @@ uint32_t Element::GetParentHeight()const
     return 1;
 }
 
-
-int Element::GetFont()const
+const uint32_t Element::GetFont()const
 {
-    if( mFont > 0 )
+    if( GetStyle().mFont != 0 )
     {
-        return mFont;
+        return GetStyle().mFont;
     }
-    else if( mParent )
+
+    if( mParent == nullptr )
     {
-        return mParent->GetFont();
+        THROW_MEANINGFUL_EXCEPTION("No font set for this UI");
     }
-    return 0;
+    return mParent->GetFont();
 }
 
 ElementPtr Element::SetPos(uint32_t pX,uint32_t pY)
@@ -330,10 +503,14 @@ bool Element::OnDraw(Graphics* pGraphics,const Rectangle& pContentRect)
 
     if( mText.size() > 0 )
     {
-        const int font = GetFont();
-        if( font > 0 )
+        const uint32_t font = GetFont();
+        if( font != 0 )
         {
             pGraphics->FontPrint(font,mContentRectangle,mStyle.mAlignment,mStyle.mForeground,mText);
+        }
+        else
+        {
+            THROW_MEANINGFUL_EXCEPTION("Element has no fonts to render text with");
         }
     }
     return false;
