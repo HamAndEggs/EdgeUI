@@ -287,7 +287,6 @@ void Loader::Clear()
     mGreen.resize(0);
     mBlue.resize(0);
     mAlpha.resize(0);
-
 }
 
 bool Loader::ReadImageHeader(const PNGChunk& pChunk)

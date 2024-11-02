@@ -5,24 +5,30 @@
 #include "GLTexture.h"
 #include "FreeTypeFont.h"
 #include "../TinyPNG.h"
+#include "../TinyTGA.h"
 
 #include <math.h>
+#include <fstream>
+#include <iostream>
+
 
 namespace eui{
-///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-struct PNG_LOADER
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct IMAGE_LOADER
 {
-	PNG_LOADER():loader(false)
+	IMAGE_LOADER():png(false)
 	{
 
 	}
-	tinypng::Loader loader;
+	tinypng::Loader png;
+	tinytga::Loader tga;
 	std::vector<uint8_t> pixelBuffer;
+	std::vector<uint8_t> fileBuffer;
 };
 
 Graphics::Graphics()
 {
-	mPNG = std::make_unique<PNG_LOADER>();
+	mImageLoader = std::make_unique<IMAGE_LOADER>();
 }
 
 Graphics::~Graphics()
@@ -731,24 +737,55 @@ void Graphics::DrawRoundedLine(float pFromX,float pFromY,float pToX,float pToY,C
 //
 }
 
-uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
+uint32_t Graphics::TextureLoad(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
 {
-    if( mPNG->loader.LoadFromFile(pFilename) )
+    std::ifstream InputFile(pFilename,std::ifstream::binary);
+    if( !InputFile )
     {
-		if( mPNG->loader.GetHasAlpha() )
+		VERBOSE_MESSAGE("Failed to load PNG " << pFilename);
+		return TextureGetDiagnostics();
+	}
+
+	InputFile.seekg (0, InputFile.end);
+	const size_t fileSize = InputFile.tellg();
+	InputFile.seekg (0, InputFile.beg);
+
+	mImageLoader->fileBuffer.resize(fileSize);
+	std::vector<uint8_t> buffer(fileSize);
+
+	InputFile.read((char*)mImageLoader->fileBuffer.data(),fileSize);
+	if( !InputFile )
+	{
+		VERBOSE_MESSAGE("Failed to load PNG, could read all the data for file ");
+		return TextureGetDiagnostics();
+	}
+
+
+    if( mImageLoader->png.LoadFromMemory(mImageLoader->fileBuffer) )
+    {
+		if( mImageLoader->png.GetHasAlpha() )
         {
-            mPNG->loader.GetRGBA(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
+            mImageLoader->png.GetRGBA(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->png.GetWidth(),mImageLoader->png.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
         }
         else
         {
-            mPNG->loader.GetRGB(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
+            mImageLoader->png.GetRGB(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->png.GetWidth(),mImageLoader->png.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
         }
     }
-	else
-	{
-		std::clog << "Failed to load PNG: " << pFilename << "\n";
+	else if( mImageLoader->tga.LoadFromMemory(mImageLoader->fileBuffer) )
+	{ 
+		if( mImageLoader->tga.GetHasAlpha() )
+        {
+            mImageLoader->tga.GetRGBA(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->tga.GetWidth(),mImageLoader->tga.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
+        }
+        else
+        {
+            mImageLoader->tga.GetRGB(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->tga.GetWidth(),mImageLoader->tga.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
+        }
 	}
 
 	return TextureGetDiagnostics();

@@ -95,7 +95,7 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
 
             SetSpan(span[0].GetInt32(),span[1].GetInt32());
         }
-        else if( child.first == "padding" )
+        else if( child.first == "pad" )
         {
             const tinyjson::JsonValue &padding = child.second;
             if( padding.GetType() == tinyjson::JsonValueType::ARRAY )
@@ -126,8 +126,6 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
         else if( child.first == "text" )
         {
             SetText(child.second.GetString());
-    //        std::cout << "Set text:" << GetText() << "\n";
-    //    ElementPtr SetTextF(const char* pFmt,...);
         }
         else if( child.first == "visible" )
         {
@@ -181,24 +179,70 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
                 const tinyjson::JsonValue &font = fStyle["font"];
                 if(font.GetType() == tinyjson::JsonValueType::OBJECT)
                 {
+                    VERBOSE_MESSAGE("Styles font " << font["file"].GetString() << " size " << font["size"].GetUInt32());
                     aStyle.mFont = pGraphics->FontLoad(font["file"].GetString(),font["size"].GetUInt32());                    
                 }
                 else
                 {
-                THROW_MEANINGFUL_EXCEPTION("Font in style is not an object");
+                    THROW_MEANINGFUL_EXCEPTION("Font in style is not an object");
                 }
             }
+
+            if( fStyle.HasValue("texture") )
+            {
+                const tinyjson::JsonValue &texture = fStyle["texture"];
+                if(texture.GetType() == tinyjson::JsonValueType::STRING)
+                {
+                    VERBOSE_MESSAGE("Styles texture " << texture.GetString());
+                    aStyle.mTexture = pGraphics->TextureLoad(texture.GetString());
+                }
+                else
+                {
+                    THROW_MEANINGFUL_EXCEPTION("texture in style is not a string");
+                }
+            }
+
+
+            if( fStyle.HasValue("boarder_style") )
+            {
+                const tinyjson::JsonValue &boarder_style = fStyle["boarder_style"];
+                if(boarder_style.GetType() == tinyjson::JsonValueType::STRING)
+                {
+                    const std::string bs = boarder_style.GetString();
+                    VERBOSE_MESSAGE("boarder style " << bs);
+                    if( bs == "SOLID" )
+                    {
+                        aStyle.mBoarderStyle = BS_SOLID;
+                    }
+                    else if( bs == "RAISED" )
+                    {
+                        aStyle.mBoarderStyle = BS_RAISED;
+                    }
+                    else if( bs == "DEPRESSED" )
+                    {
+                        aStyle.mBoarderStyle = BS_DEPRESSED;
+                    }
+                }
+                else
+                {
+                    THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
+                }
+            }
+
+            if( fStyle.HasValue("alignment") )
+            {
+                const tinyjson::JsonValue &alignment = fStyle["alignment"];
+                if(alignment.GetType() == tinyjson::JsonValueType::STRING)
+                {
+                    aStyle.mAlignment = StringToAlignment(fStyle["alignment"].GetString());
+                }
+                else
+                {
+                    THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
+                }
+            }
+
             SetStyle(aStyle);
-
-
-    //    Colour mForeground = COLOUR_WHITE;          //!< If alpha is set to zero then foreground will not be rendered.
-    //    Colour mBackground = COLOUR_NONE;           //!< If alpha is set to zero then background will not be rendered.
-    //    Colour mBorder = COLOUR_NONE;               //!< If alpha is set to zero then background will not be rendered.
-    //    float mRadius = 0;                          //!< If background is rendered will give the rectangle rounded edges.
-    //    float mThickness = 0;                      //!< if boarder is rendered, will be the width in pixels. For lines, drawn with this mThickness.
-    //    BoarderStyle mBoarderStyle = BS_SOLID;      //!< Used for buttons and content groups, normally you'll use BS_SOLID.
-    //    Alignment mAlignment = ALIGN_CENTER_CENTER; //!< How to position content in the content rect. For content scaled to the size of the content this will not have an effect.
-    //    uint32_t mTexture = 0;                      //!< If set, will be scaled to fit content rect. If mBackground colour is set, will be modulated against that.
         }
         else
         {// Assume all else is a new child element.

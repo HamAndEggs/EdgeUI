@@ -131,7 +131,13 @@ public:
 
 	void DrawTexture(const Rectangle& pRect,uint32_t pTexture,Colour pColour = COLOUR_WHITE);
 
-	uint32_t TextureLoadPNG(const std::string& pFilename,bool pFiltered = false,bool pGenerateMipmaps = false);
+	/**
+	 * Tries to create a texture from the file passed in.
+	 * Will open the header and look for formats it knows.
+	 * Because of this only formats with headers that are easy to tell the difference
+	 * from are supported.
+	 */
+	uint32_t TextureLoad(const std::string& pFilename,bool pFiltered = false,bool pGenerateMipmaps = false);
 
 	/**
 	 * @brief Create a Texture object with the size passed in and a given name. 
@@ -187,7 +193,7 @@ private:
 		VertXY::Buffer uvs;
 	}mWorkBuffers;
 
-	std::unique_ptr<struct PNG_LOADER>mPNG;
+	std::unique_ptr<struct IMAGE_LOADER>mImageLoader;
 
 	std::map<uint32_t,std::unique_ptr<GLTexture>> mTextures; 	//!< Our textures. I reuse the GL texture index (handle) for my own. A handy value and works well.
 
@@ -277,8 +283,6 @@ private:
 
 	void EnableShader(GLShaderPtr pShader);
 	void VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer);
-
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
