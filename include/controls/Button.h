@@ -14,7 +14,7 @@ public:
     typedef std::function<void ()> OnReleased;
 
     Button( std::string pLabel,
-            int pFont,
+            uint32_t pFont,
             eui::Colour pColour = eui::COLOUR_LIGHT_GREY,
             float pBoarderSize = 5.0f,
             float pRadius = 0.1f,
@@ -23,18 +23,16 @@ public:
             mOnPressed(pOnPressed),
             mOnReleased(pOnReleased)
     {
-        ConstructStyle(pColour,pBoarderSize,pRadius);
+        ConstructStyle(pColour,pBoarderSize,pRadius,pFont);
         SetText(pLabel);
-        SetFont(pFont);
     }
 
-    Button( std::string pLabel,int pFont,OnPressed pOnPressed):
+    Button( std::string pLabel,uint32_t pFont,OnPressed pOnPressed):
             mOnPressed(pOnPressed),
             mOnReleased(nullptr)
     {
-        ConstructStyle(eui::COLOUR_LIGHT_GREY,5.0f,0.1f);
+        ConstructStyle(eui::COLOUR_LIGHT_GREY,5.0f,0.1f,pFont);
         SetText(pLabel);
-        SetFont(pFont);
     }
 
     virtual ~Button(){};
@@ -71,7 +69,7 @@ private:
         return false;
     }
 
-    void ConstructStyle(eui::Colour pColour,float pBoarderSize,float pRadius)
+    void ConstructStyle(eui::Colour pColour,float pBoarderSize,float pRadius,uint32_t pFont)
     {
         eui::Style s;
         s.mBackground = pColour;
@@ -79,6 +77,7 @@ private:
         s.mBorder = eui::COLOUR_WHITE;
         s.mThickness = pBoarderSize;
         s.mRadius = pRadius;
+        s.mFont = pFont;
         SetStyle(s);
     }
 

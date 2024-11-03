@@ -1,6 +1,10 @@
 
 #include "Element.h"
+#include "ResourceMap.h"
+#include "Graphics.h"
+
 #include <memory>
+#include <cstdarg>
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
@@ -40,12 +44,20 @@ namespace eui{
     #define COUNT_DELETE()
 #endif
 
-Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
+Element::Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources)
 {
-    for(const auto &child : root.mObject)
+    if(pLoadResources == nullptr)
+    {
+        THROW_MEANINGFUL_EXCEPTION("Resouce map is null");
+    }
+
+    for(const auto &child : root)
     {
     // First check for the properties we know about, and then scan for child objects.
-        if( child.first == "pos" )
+        if( child.first == "resource" )
+        {// Skip, will have been loaded by the resource map.
+        }
+        else if( child.first == "pos" )
         {
             const tinyjson::JsonValue &pos = child.second;
             if( pos.GetType() != tinyjson::JsonValueType::ARRAY )
@@ -58,7 +70,7 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
                 THROW_MEANINGFUL_EXCEPTION("Elements position array is not two just two elements");
             }
 
-            SetPos(pos[0].GetInt32(),pos[1].GetInt32());
+            SetPos(pos[0],pos[1]);
         }
         else if( child.first == "grid" )
         {
@@ -69,7 +81,7 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
                 {
                     THROW_MEANINGFUL_EXCEPTION("Elements position array is not two just two elements");
                 }
-                SetGrid(grid[0].GetInt32(),grid[1].GetInt32());
+                SetGrid(grid[0],grid[1]);
             }
             else if( grid.GetType() == tinyjson::JsonValueType::BOOLEAN )
             {
@@ -93,7 +105,7 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
                 THROW_MEANINGFUL_EXCEPTION("Elements span array is not two just two elements");
             }
 
-            SetSpan(span[0].GetInt32(),span[1].GetInt32());
+            SetSpan(span[0],span[1]);
         }
         else if( child.first == "pad" )
         {
@@ -102,11 +114,11 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
             {
                 if( padding.mArray.size() == 2 )
                 {
-                    SetPadding(padding[0].GetFloat(),padding[1].GetFloat());
+                    SetPadding(padding[0],padding[1]);
                 }
                 else if( padding.mArray.size() == 4 )
                 {
-                    SetPadding(padding[0].GetFloat(),padding[1].GetFloat(),padding[2].GetFloat(),padding[3].GetFloat());
+                    SetPadding(padding[0],padding[1],padding[2],padding[3]);
                 }
                 else
                 {
@@ -116,7 +128,7 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
             }
             else if( padding.GetType() == tinyjson::JsonValueType::NUMBER )
             {
-                SetPadding(padding.GetFloat());
+                SetPadding(padding);
             }
             else
             {
@@ -125,128 +137,37 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
         }
         else if( child.first == "text" )
         {
-            SetText(child.second.GetString());
+            SetText(child.second);
         }
         else if( child.first == "visible" )
         {
-    //    ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
+            SetVisible(child.second);
         }
         else if( child.first == "active" )
         {
-    //  ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
+            SetActive(child.second);
         }
         else if( child.first == "user_value" )
         {
-    //    ElementPtr SetUserValue(uint32_t pUserValue){mUserValue = pUserValue;return this;}
+    //        ElementPtr SetUserValue(uint32_t pUserValue){mUserValue = pUserValue;return this;}
         }
         else if( child.first == "style" )
         {
-            const tinyjson::JsonValue &fStyle = child.second;
-            Style aStyle;
-
-            if( fStyle.HasValue("foreground") )
-            {
-                aStyle.mForeground = MakeColour(fStyle["foreground"].GetString());
-            }
-
-            if( fStyle.HasValue("background") )
-            {
-                const std::string c = fStyle["background"].GetString();
-                aStyle.mBackground = MakeColour(c);
-            }
-
-            if( fStyle.HasValue("border") )
-            {
-                const std::string c = fStyle["border"].GetString();
-                aStyle.mBorder = MakeColour(c);
-                VERBOSE_MESSAGE("thickness " << aStyle.mBorder);
-            }
-
-            if( fStyle.HasValue("radius") )
-            {
-                aStyle.mRadius = fStyle["radius"].GetFloat();
-                VERBOSE_MESSAGE("radius " << aStyle.mRadius);
-            }
-
-            if( fStyle.HasValue("thickness") )
-            {
-                aStyle.mThickness = fStyle["thickness"].GetInt32();
-                VERBOSE_MESSAGE("thickness " << aStyle.mThickness);
-            }
-
-            if( fStyle.HasValue("font") )
-            {
-                const tinyjson::JsonValue &font = fStyle["font"];
-                if(font.GetType() == tinyjson::JsonValueType::OBJECT)
-                {
-                    VERBOSE_MESSAGE("Styles font " << font["file"].GetString() << " size " << font["size"].GetUInt32());
-                    aStyle.mFont = pGraphics->FontLoad(font["file"].GetString(),font["size"].GetUInt32());                    
-                }
-                else
-                {
-                    THROW_MEANINGFUL_EXCEPTION("Font in style is not an object");
-                }
-            }
-
-            if( fStyle.HasValue("texture") )
-            {
-                const tinyjson::JsonValue &texture = fStyle["texture"];
-                if(texture.GetType() == tinyjson::JsonValueType::STRING)
-                {
-                    VERBOSE_MESSAGE("Styles texture " << texture.GetString());
-                    aStyle.mTexture = pGraphics->TextureLoad(texture.GetString());
-                }
-                else
-                {
-                    THROW_MEANINGFUL_EXCEPTION("texture in style is not a string");
-                }
-            }
-
-
-            if( fStyle.HasValue("boarder_style") )
-            {
-                const tinyjson::JsonValue &boarder_style = fStyle["boarder_style"];
-                if(boarder_style.GetType() == tinyjson::JsonValueType::STRING)
-                {
-                    const std::string bs = boarder_style.GetString();
-                    VERBOSE_MESSAGE("boarder style " << bs);
-                    if( bs == "SOLID" )
-                    {
-                        aStyle.mBoarderStyle = BS_SOLID;
-                    }
-                    else if( bs == "RAISED" )
-                    {
-                        aStyle.mBoarderStyle = BS_RAISED;
-                    }
-                    else if( bs == "DEPRESSED" )
-                    {
-                        aStyle.mBoarderStyle = BS_DEPRESSED;
-                    }
-                }
-                else
-                {
-                    THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
-                }
-            }
-
-            if( fStyle.HasValue("alignment") )
-            {
-                const tinyjson::JsonValue &alignment = fStyle["alignment"];
-                if(alignment.GetType() == tinyjson::JsonValueType::STRING)
-                {
-                    aStyle.mAlignment = StringToAlignment(fStyle["alignment"].GetString());
-                }
-                else
-                {
-                    THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
-                }
-            }
-
-            SetStyle(aStyle);
+            SetStyle(child.second,pLoadResources);
         }
         else
         {// Assume all else is a new child element.
-            ElementPtr e = new Element(child.second,pGraphics);
+            // Check to see if it's got a child stating a control, if not use normal element.
+            ElementPtr e = nullptr;
+            if( child.second.HasValue("control") )
+            {
+                // e = LoadControl(child.second);
+                e = new Element(child.second,pLoadResources);
+            }
+            else
+            {
+                e = new Element(child.second,pLoadResources);
+            }
             e->SetID(child.first);
             Attach(e);
             VERBOSE_MESSAGE("Added child:" << child.first);
@@ -255,7 +176,6 @@ Element::Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics)
 
     VERBOSE_MESSAGE("Finished loading UI file");
 }
-
 
 Element::Element(const Style& pStyle)
 {
@@ -394,6 +314,96 @@ ElementPtr Element::SetTextF(const char* pFmt,...)
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
 	SetText(buf);
+    return this;
+}
+
+ElementPtr Element::SetStyle(const tinyjson::JsonValue &fStyle,ResouceMap* pLoadResources)
+{
+    if(pLoadResources == nullptr)
+    {
+        THROW_MEANINGFUL_EXCEPTION("Resouce map is null whilst bu8ilding style");
+    }
+
+    Style aStyle;
+
+    if( fStyle.HasValue("foreground") )
+    {
+        aStyle.mForeground = MakeColour(fStyle["foreground"]);
+    }
+
+    if( fStyle.HasValue("background") )
+    {
+        aStyle.mBackground = MakeColour(fStyle["background"]);
+    }
+
+    if( fStyle.HasValue("border") )
+    {
+        aStyle.mBorder = MakeColour(fStyle["border"]);
+        VERBOSE_MESSAGE("thickness " << aStyle.mBorder);
+    }
+
+    if( fStyle.HasValue("radius") )
+    {
+        aStyle.mRadius = fStyle["radius"];
+        VERBOSE_MESSAGE("radius " << aStyle.mRadius);
+    }
+
+    if( fStyle.HasValue("thickness") )
+    {
+        aStyle.mThickness = fStyle["thickness"];
+        VERBOSE_MESSAGE("thickness " << aStyle.mThickness);
+    }
+
+    if( fStyle.HasValue("font") )
+    {
+        aStyle.mFont = pLoadResources->get(fStyle["font"]);
+    }
+
+    if( fStyle.HasValue("texture") )
+    {
+        aStyle.mTexture = pLoadResources->get(fStyle["texture"]);
+    }
+
+    if( fStyle.HasValue("boarder_style") )
+    {
+        const tinyjson::JsonValue &boarder_style = fStyle["boarder_style"];
+        if(boarder_style.GetType() == tinyjson::JsonValueType::STRING)
+        {
+            const std::string bs = boarder_style;
+            VERBOSE_MESSAGE("boarder style " << bs);
+            if( bs == "SOLID" )
+            {
+                aStyle.mBoarderStyle = BS_SOLID;
+            }
+            else if( bs == "RAISED" )
+            {
+                aStyle.mBoarderStyle = BS_RAISED;
+            }
+            else if( bs == "DEPRESSED" )
+            {
+                aStyle.mBoarderStyle = BS_DEPRESSED;
+            }
+        }
+        else
+        {
+            THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
+        }
+    }
+
+    if( fStyle.HasValue("alignment") )
+    {
+        const tinyjson::JsonValue &alignment = fStyle["alignment"];
+        if(alignment.GetType() == tinyjson::JsonValueType::STRING)
+        {
+            aStyle.mAlignment = StringToAlignment(fStyle["alignment"]);
+        }
+        else
+        {
+            THROW_MEANINGFUL_EXCEPTION("Boarder style in style is not a string");
+        }
+    }
+
+    SetStyle(aStyle);
     return this;
 }
 

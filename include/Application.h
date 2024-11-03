@@ -9,7 +9,6 @@
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
-
 /**
  * @brief This is the abstract based class of the application.
  * One of the main goes of this code base is to avoid the use of singletons.

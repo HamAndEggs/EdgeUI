@@ -6,9 +6,9 @@
 #include <functional>
 #include <list>
 
-#include "Graphics.h"
 #include "Style.h"
 #include "Diagnostics.h"
+#include "Rectangle.h"
 
 #include "../TinyJson/TinyJson.h"
 
@@ -17,6 +17,7 @@ namespace eui{
 
 class Element;
 class Graphics;
+struct ResouceMap;
 
 typedef Element* ElementPtr;
 
@@ -26,10 +27,11 @@ typedef Element* ElementPtr;
 class Element
 {
 public:
+
     /**
      * @brief 
      */
-    Element(const tinyjson::JsonValue &root,eui::Graphics* pGraphics);
+    Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
     Element(const Style& pStyle = eui::Style());
     virtual ~Element();
 
@@ -92,6 +94,7 @@ public:
     ElementPtr SetTextF(const char* pFmt,...);
 
     ElementPtr SetStyle(const Style& pStyle){mStyle = pStyle;return this;}
+    ElementPtr SetStyle(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
 
     ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
     ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
@@ -197,4 +200,4 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }//namespace eui{
 
-#endif//
+#endif

@@ -23,12 +23,12 @@ public:
         s.mBorder = eui::COLOUR_WHITE;
         s.mThickness = pBoarderSize;
         s.mRadius = pRadius;
+        s.mFont = pFont;
 
         mTickStyle.mThickness = 3;
 
         SetStyle(s);
         SetText(pLabel);
-        SetFont(pFont);
     }
 
     virtual ~Checkbox(){};
