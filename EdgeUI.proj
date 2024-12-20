@@ -8,13 +8,18 @@
             "include": [
                 "./source",
                 "./include",
-                "/usr/include/freetype2/",
+                "/usr/include/freetype2",
                 "/usr/include",
+                "/usr/include/libdrm",
                 "./"
             ],
             "define": [
                 "NDEBUG",
                 "RELEASE_BUILD"
+            ],
+            "source_files":
+	        [
+                "./source/GL/PlatformInterface_DRM.cpp"
             ]
 		},
 		"debug":
@@ -25,21 +30,33 @@
                 "./include",
                 "/usr/include/freetype2/",
                 "/usr/include",
+                "/usr/include/gtk-4.0",
+                "/usr/include/pango-1.0",
+                "/usr/include/glib-2.0",
+                "/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+                "/usr/include/harfbuzz",
+                "/usr/include/cairo",
+                "/usr/include/gdk-pixbuf-2.0",
+                "/usr/include/graphene-1.0",
+                "/usr/lib/x86_64-linux-gnu/graphene-1.0/include",
                 "./"
             ],
             "define": [
                 "DEBUG_BUILD"   
+            ],
+            "source_files":
+	        [
+                "./source/GL/PlatformInterface_GTK4.cpp"
             ]
 		}
 	},
     "source_files":
-	[
+    [
         "./source/Element.cpp",
         "./source/TinyPNG.cpp",
         "./source/GL/FreeTypeFont.cpp",
         "./source/GL/GLDiagnostics.cpp",
         "./source/GL/GLShader.cpp",
-        "./source/GL/Graphics_GL.cpp",
-        "./source/GL/PlatformInterface_GTK4.cpp"
+        "./source/GL/Graphics_GL.cpp"
 	]
 }

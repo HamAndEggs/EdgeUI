@@ -166,7 +166,6 @@ public:
 
         // fill in the target with converted file data
         int source_byte_size = (header->depth>>3);
-        int target_byte_size = has_alpha?4:3;
         int y = -1;
         int y_step = 1;
         int h = header->height;
@@ -176,7 +175,8 @@ public:
             y = header->height;
         }
 
-        VERBOSE_MESSAGE("target_byte_size " << target_byte_size);
+//        int target_byte_size = has_alpha?4:3;
+ //       VERBOSE_MESSAGE("target_byte_size " << target_byte_size);
 
         // initialise the target image buffer
         const size_t bufferSize = header->width * header->height;
