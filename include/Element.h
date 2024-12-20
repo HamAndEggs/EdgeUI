@@ -48,7 +48,7 @@ public:
 
     std::string GetText()const{return mText;}
 
-    static std::string ClassID(){return "eui::Element";}
+    static std::string ClassID(){return "eui::element";}
     virtual std::string GetClassID()const{return ClassID();}
 
     const std::string GetID()const{return mID;}
@@ -95,6 +95,8 @@ public:
 
     ElementPtr SetStyle(const Style& pStyle){mStyle = pStyle;return this;}
     ElementPtr SetStyle(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
+    ElementPtr SetStyle(eui::Colour pColour,BoarderStyle pBoarderStyle,float pBoarderSize,float pRadius,uint32_t pFont);
+
 
     ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
     ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
@@ -194,7 +196,8 @@ private:
     OnTouchedCB mOnTouchedCB = nullptr;
     OnKeyboardCB mOnKeyboardCB = nullptr;
 
-    virtual void CalculateContentRectangle(const Rectangle& pParentRect);
+    void CalculateContentRectangle(const Rectangle& pParentRect);
+    ElementPtr LoadControl(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

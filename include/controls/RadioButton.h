@@ -16,27 +16,27 @@ typedef RadioButtonGroup* RadioButtonGroupPtr;
 class RadioButton : public Element
 {
 public:
+    RadioButton(const tinyjson::JsonValue &root,ResouceMap* pLoadResources):Element(root,pLoadResources)
+    {
+        if( root.HasValue("style") == false )
+        {
+            SetStyle(eui::COLOUR_LIGHT_GREY,eui::BS_RAISED,5.0f,0.1f,0);
+        }
+        mTickStyle.mThickness = 3;
+    }
+
     RadioButton(std::string pLabel,uint32_t pID,int pFont = 0,eui::Colour pColour = eui::COLOUR_LIGHT_GREY,float pBoarderSize = 5.0f,float pRadius = 0.1f)
     {
-        eui::Style s;
+        SetStyle(pColour,eui::BS_RAISED,pBoarderSize,pRadius,pFont);
 
-        s.mBackground = pColour;
-        s.mBoarderStyle = eui::BS_RAISED;
-        s.mBorder = eui::COLOUR_WHITE;
-        s.mThickness = pBoarderSize;
-        s.mRadius = pRadius;
-        s.mFont = pFont;
 
-        mTickStyle.mThickness = 3;
-
-        SetStyle(s);
         SetText(pLabel);
         SetUserValue(pID);
     }
 
     virtual ~RadioButton(){}
 
-    static std::string ClassID(){return "eui::RadioButton";}
+    static std::string ClassID(){return "eui::radio-button";}
     virtual std::string GetClassID()const{return ClassID();}
 
     virtual bool OnDraw(Graphics* pGraphics,const Rectangle& pContentRect)
@@ -73,8 +73,12 @@ public:
     RadioButtonGroup(){SetAutoGrid();}
     virtual ~RadioButtonGroup(){}
 
-    static std::string ClassID(){return "eui::RadioButtonGroup";}
+    static std::string ClassID(){return "eui::radio-button-group";}
     virtual std::string GetClassID()const{return ClassID();}
+
+    RadioButtonGroup(const tinyjson::JsonValue &root,ResouceMap* pLoadResources):Element(root,pLoadResources)
+    {
+    }
 
     RadioButtonGroupPtr Add(const std::string &pLabel,uint32_t pID,int pFont = 0)
     {

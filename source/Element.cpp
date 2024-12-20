@@ -3,6 +3,10 @@
 #include "ResourceMap.h"
 #include "Graphics.h"
 
+// Controls that we can load from a file.
+#include "controls/Controls.h"
+
+
 #include <memory>
 #include <cstdarg>
 
@@ -155,14 +159,18 @@ Element::Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources)
         {
             SetStyle(child.second,pLoadResources);
         }
+        else if( child.first == "control" )
+        {
+            // skip this.
+        }
         else
         {// Assume all else is a new child element.
             // Check to see if it's got a child stating a control, if not use normal element.
             ElementPtr e = nullptr;
             if( child.second.HasValue("control") )
             {
-                // e = LoadControl(child.second);
-                e = new Element(child.second,pLoadResources);
+                VERBOSE_MESSAGE("Found control: " << child.second["control"].GetString());
+                e = LoadControl(child.second,pLoadResources);
             }
             else
             {
@@ -173,8 +181,6 @@ Element::Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources)
             VERBOSE_MESSAGE("Added child:" << child.first);
         }
     }
-
-    VERBOSE_MESSAGE("Finished loading UI file");
 }
 
 Element::Element(const Style& pStyle)
@@ -407,6 +413,20 @@ ElementPtr Element::SetStyle(const tinyjson::JsonValue &fStyle,ResouceMap* pLoad
     return this;
 }
 
+
+ElementPtr Element::SetStyle(eui::Colour pColour,BoarderStyle pBoarderStyle,float pBoarderSize,float pRadius,uint32_t pFont)
+{
+    eui::Style s;
+    s.mBackground = pColour;
+    s.mBoarderStyle = pBoarderStyle;
+    s.mBorder = eui::COLOUR_WHITE;
+    s.mThickness = pBoarderSize;
+    s.mRadius = pRadius;
+    s.mFont = pFont;
+    SetStyle(s);
+    return this;
+}
+
 ElementPtr Element::Attach(ElementPtr pElement)
 {
     VERBOSE_MESSAGE("Attaching " + pElement->GetID() + " to " + mID);
@@ -599,6 +619,28 @@ void Element::CalculateContentRectangle(const Rectangle& pParentRect)
         contentRect.GetY(mPadding.bottom));
 }
 
+ElementPtr Element::LoadControl(const tinyjson::JsonValue &root,ResouceMap* pLoadResources)
+{
+    const std::string type = root["control"];
+    if( type == Button::ClassID() )
+    {
+        return new Button(root,pLoadResources);
+    }
+    else if( type == Checkbox::ClassID() )
+    {
+        return new Checkbox(root,pLoadResources);
+    }
+    else if( type == RadioButton::ClassID() )
+    {
+        return new RadioButton(root,pLoadResources);
+    }
+    else if( type == Slider::ClassID() )
+    {
+        return new Slider(root,pLoadResources);
+    }
+
+    THROW_MEANINGFUL_EXCEPTION("Unknown control type:" + type);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
