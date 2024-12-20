@@ -15,6 +15,27 @@ class Slider : public Element
 {
     using BaseClass = Element;
 public:
+    Slider(const tinyjson::JsonValue &root,ResouceMap* pLoadResources):Element(root,pLoadResources)
+    {
+        if( root.HasValue("style") == false )
+        {
+            GetStyle().mBackground = COLOUR_BLUE;
+            GetStyle().mForeground = COLOUR_DARK_GREY;
+            GetStyle().mAlignment = ALIGN_LEFT_TOP;
+        }
+
+        mMin = root["min"];
+        mMax = root["max"];
+        mStep = root["step"];
+        assert(mMin < mMax);
+
+        mKnobStyle.mForeground = COLOUR_LIGHT_GREY;
+        mKnobStyle.mBorder = COLOUR_BLACK;
+        mKnobStyle.mThickness = 2;
+        mKnobStyle.mRadius = 0.3f;
+    }
+
+
     Slider(int min,int max,int step):
         mMin(min),mMax(max),mStep(step),
         mValue(min + ((max - min) / 2))
@@ -32,7 +53,7 @@ public:
 
     virtual ~Slider(){};
 
-    static std::string ClassID(){return "eui::Slider";}
+    static std::string ClassID(){return "eui::slider";}
     virtual std::string GetClassID()const{return ClassID();}
 
     virtual bool OnUpdate(const Rectangle& pContentRect)

@@ -19,6 +19,7 @@ struct Style
     BoarderStyle mBoarderStyle = BS_SOLID;      //!< Used for buttons and content groups, normally you'll use BS_SOLID.
     Alignment mAlignment = ALIGN_CENTER_CENTER; //!< How to position content in the content rect. For content scaled to the size of the content this will not have an effect.
     uint32_t mTexture = 0;                      //!< If set, will be scaled to fit content rect. If mBackground colour is set, will be modulated against that.
+    uint32_t mFont = 0;                       //!< If set, is the font used to render with.
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

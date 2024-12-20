@@ -33,7 +33,7 @@ struct FreeTypeFont
 		}uv[2];
 	};
 
-	FreeTypeFont(FT_Face pFontFace,int pPixelHeight);
+	FreeTypeFont(const std::string pID,FT_Face pFontFace,int pPixelHeight);
 	~FreeTypeFont();
 
 	/**
@@ -54,12 +54,15 @@ struct FreeTypeFont
 	Rectangle GetRect(const std::string_view& pText)const;
 
 
-	const std::string mFontName; //<! Helps with debugging.
+	const std::string mID;						//<! Is the face name + size, used when loading so we load it just once.
+	const std::string mFontName; 				//<! Helps with debugging.
+	
 	FT_Face mFace;								//<! The font we are rending from.
 	uint32_t mTexture;							//<! This is the texture that the glyphs are in so we can render using GL and quads.
 	std::array<FreeTypeFont::Glyph,96>mGlyphs;	//<! Meta data needed to render the characters.
 	int mBaselineHeight;						//<! This is the number of pixels above baseline the higest character is. Used for centering a font in the y.
 	int mSpaceAdvance;							//<! How much to advance by for a non rerendered character.
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

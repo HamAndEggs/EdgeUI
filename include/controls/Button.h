@@ -13,8 +13,16 @@ public:
     typedef std::function<void ()> OnPressed;
     typedef std::function<void ()> OnReleased;
 
+    Button(const tinyjson::JsonValue &root,ResouceMap* pLoadResources):Element(root,pLoadResources)
+    {
+        if( root.HasValue("style") == false )
+        {
+            SetStyle(eui::COLOUR_LIGHT_GREY,eui::BS_RAISED,5.0f,0.1f,0);
+        }
+    }
+
     Button( std::string pLabel,
-            int pFont,
+            uint32_t pFont,
             eui::Colour pColour = eui::COLOUR_LIGHT_GREY,
             float pBoarderSize = 5.0f,
             float pRadius = 0.1f,
@@ -23,23 +31,21 @@ public:
             mOnPressed(pOnPressed),
             mOnReleased(pOnReleased)
     {
-        ConstructStyle(pColour,pBoarderSize,pRadius);
+        SetStyle(pColour,eui::BS_RAISED,pBoarderSize,pRadius,pFont);
         SetText(pLabel);
-        SetFont(pFont);
     }
 
-    Button( std::string pLabel,int pFont,OnPressed pOnPressed):
+    Button( std::string pLabel,uint32_t pFont,OnPressed pOnPressed):
             mOnPressed(pOnPressed),
             mOnReleased(nullptr)
     {
-        ConstructStyle(eui::COLOUR_LIGHT_GREY,5.0f,0.1f);
+        SetStyle(eui::COLOUR_LIGHT_GREY,eui::BS_RAISED,5.0f,0.1f,pFont);
         SetText(pLabel);
-        SetFont(pFont);
     }
 
     virtual ~Button(){};
 
-    static std::string ClassID(){return "eui::Button";}
+    static std::string ClassID(){return "eui::button";}
     virtual std::string GetClassID()const{return ClassID();}
 
     void SetOnPressed(OnPressed pOnPressed){mOnPressed=pOnPressed;}
@@ -70,18 +76,6 @@ private:
 
         return false;
     }
-
-    void ConstructStyle(eui::Colour pColour,float pBoarderSize,float pRadius)
-    {
-        eui::Style s;
-        s.mBackground = pColour;
-        s.mBoarderStyle = eui::BS_RAISED;
-        s.mBorder = eui::COLOUR_WHITE;
-        s.mThickness = pBoarderSize;
-        s.mRadius = pRadius;
-        SetStyle(s);
-    }
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

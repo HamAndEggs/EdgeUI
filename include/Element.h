@@ -6,15 +6,18 @@
 #include <functional>
 #include <list>
 
-#include "Graphics.h"
 #include "Style.h"
 #include "Diagnostics.h"
+#include "Rectangle.h"
+
+#include "../TinyJson/TinyJson.h"
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////    
 
 class Element;
 class Graphics;
+struct ResouceMap;
 
 typedef Element* ElementPtr;
 
@@ -24,9 +27,11 @@ typedef Element* ElementPtr;
 class Element
 {
 public:
+
     /**
      * @brief 
      */
+    Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
     Element(const Style& pStyle = eui::Style());
     virtual ~Element();
 
@@ -43,13 +48,16 @@ public:
 
     std::string GetText()const{return mText;}
 
-    static std::string ClassID(){return "eui::Element";}
+    static std::string ClassID(){return "eui::element";}
     virtual std::string GetClassID()const{return ClassID();}
 
     const std::string GetID()const{return mID;}
     const ElementPtr GetParent()const{return mParent;}
 
-    int GetFont()const;
+    /**
+     * @brief Finds the first set style that contains a font.
+     */
+    const uint32_t GetFont()const;
 
     /**
      * @brief Gets a reference to the internal style so you can modify it.
@@ -84,8 +92,11 @@ public:
     ElementPtr SetID(const std::string& pID){mID = pID;return this;}
     ElementPtr SetText(const std::string& pText){mText = pText;return this;}
     ElementPtr SetTextF(const char* pFmt,...);
-    ElementPtr SetFont(int pFont){mFont = pFont;return this;}
+
     ElementPtr SetStyle(const Style& pStyle){mStyle = pStyle;return this;}
+    ElementPtr SetStyle(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
+    ElementPtr SetStyle(eui::Colour pColour,BoarderStyle pBoarderStyle,float pBoarderSize,float pRadius,uint32_t pFont);
+
 
     ElementPtr SetVisible(bool pVisible){mVisible = pVisible;return this;}
     ElementPtr SetActive(bool pActive){mActive = pActive;return this;}
@@ -161,7 +172,7 @@ private:
     std::list<ElementPtr> mChildren;
     std::string mID;                        //!< If set can be used to search for an element.
     std::string mText;                      //!< If set, it is displayed, based on settings in the style.
-    int mFont = 0;                          //!< The font to use to render text, if zero, will use parents. Used GetFont to fetch the font to render with.
+
     bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.
     uint32_t mUserValue = 0;                //!< Allows a user to attach a value then read it later. This helps a lot for custom controls.
@@ -185,10 +196,11 @@ private:
     OnTouchedCB mOnTouchedCB = nullptr;
     OnKeyboardCB mOnKeyboardCB = nullptr;
 
-    virtual void CalculateContentRectangle(const Rectangle& pParentRect);
+    void CalculateContentRectangle(const Rectangle& pParentRect);
+    ElementPtr LoadControl(const tinyjson::JsonValue &root,ResouceMap* pLoadResources);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 }//namespace eui{
 
-#endif//
+#endif

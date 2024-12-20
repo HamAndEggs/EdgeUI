@@ -38,7 +38,8 @@ inline FT_UInt GetNextGlyph(const char *& pText)
 
 namespace eui{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FreeTypeFont::FreeTypeFont(FT_Face pFontFace,int pPixelHeight) :
+FreeTypeFont::FreeTypeFont(const std::string mID,FT_Face pFontFace,int pPixelHeight) :
+	mID(pFontFace->family_name),
 	mFontName(pFontFace->family_name),
 	mFace(pFontFace)
 {
@@ -92,6 +93,7 @@ FreeTypeFont::FreeTypeFont(FT_Face pFontFace,int pPixelHeight) :
 
 FreeTypeFont::~FreeTypeFont()
 {
+	VERBOSE_MESSAGE("Deleting font:"<<mID<<" face:"<<mFace);
 	FT_Done_Face(mFace);	
 }
 

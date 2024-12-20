@@ -2,6 +2,7 @@
 #define GRAPHICSTYPES_H__
 
 #include "ScratchBuffer.h"
+#include "Diagnostics.h"
 
 #include <stdint.h>
 #include <vector>
@@ -16,6 +17,11 @@ typedef uint32_t Colour;    //!< 32bit ARGB value.
 constexpr Colour MakeColour(uint8_t pR,uint8_t pG,uint8_t pB,uint8_t pA = 255)
 {
     return (pA<<24) | (pR<<16) | (pG<<8) | (pB<<0);
+}
+
+inline Colour MakeColour(const std::string& hex)
+{
+    return (Colour)std::stoul(hex,0,16);
 }
 
 constexpr uint8_t GetAlpha(const Colour pColour)
@@ -92,6 +98,23 @@ static const Alignment ALIGN_RIGHT_CENTER		= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN
 static const Alignment ALIGN_LEFT_BOTTOM		= SET_ALIGNMENT(ALIGN_MIN_EDGE,	ALIGN_MAX_EDGE);
 static const Alignment ALIGN_CENTER_BOTTOM		= SET_ALIGNMENT(ALIGN_CENTER,	ALIGN_MAX_EDGE);
 static const Alignment ALIGN_RIGHT_BOTTOM		= SET_ALIGNMENT(ALIGN_MAX_EDGE,	ALIGN_MAX_EDGE);
+
+inline uint32_t StringToAlignment(const std::string &alignment)
+{
+#define StringToAlignmentValue(alignement_string__) if( alignment == #alignement_string__ ){return ALIGN_##alignement_string__;}
+	StringToAlignmentValue(LEFT_TOP);
+	StringToAlignmentValue(CENTER_TOP);
+	StringToAlignmentValue(RIGHT_TOP);
+	StringToAlignmentValue(LEFT_CENTER);
+	StringToAlignmentValue(CENTER_CENTER);
+	StringToAlignmentValue(RIGHT_CENTER);
+	StringToAlignmentValue(LEFT_BOTTOM);
+	StringToAlignmentValue(CENTER_BOTTOM);
+	StringToAlignmentValue(RIGHT_BOTTOM);
+#undef StringToAlignmentValue
+	VERBOSE_MESSAGE("StringToAlignment passed with unknown alignment " << alignment);
+	return ALIGN_CENTER_CENTER;
+}
 
 enum BoarderStyle
 {

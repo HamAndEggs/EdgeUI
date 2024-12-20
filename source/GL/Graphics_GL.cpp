@@ -5,24 +5,30 @@
 #include "GLTexture.h"
 #include "FreeTypeFont.h"
 #include "../TinyPNG.h"
+#include "../TinyTGA.h"
 
 #include <math.h>
+#include <fstream>
+#include <iostream>
+
 
 namespace eui{
-///////////////////////////////////////////////////////////////////////////////////////////////////////////    
-struct PNG_LOADER
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct IMAGE_LOADER
 {
-	PNG_LOADER():loader(false)
+	IMAGE_LOADER():png(false)
 	{
 
 	}
-	tinypng::Loader loader;
+	tinypng::Loader png;
+	tinytga::Loader tga;
 	std::vector<uint8_t> pixelBuffer;
+	std::vector<uint8_t> fileBuffer;
 };
 
 Graphics::Graphics()
 {
-	mPNG = std::make_unique<PNG_LOADER>();
+	mImageLoader = std::make_unique<IMAGE_LOADER>();
 }
 
 Graphics::~Graphics()
@@ -290,6 +296,19 @@ void Graphics::SetDisplayRotation(DisplayRotation pDisplayRotation)
 
 uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 {
+	VERBOSE_MESSAGE("Loading font -> " << pFontName);
+
+	// Check it's not already loaded at this size.
+	// "slow" search but you should not be loading fonts every frame or loading that many!
+	const std::string id = pFontName + ":" + std::to_string(pPixelHeight);
+	for(auto &f : mFreeTypeFonts )
+	{
+		if( f.second->mID == id )
+		{
+			return f.first;
+		}
+	}
+
 	FT_Face loadedFace;
 	if( FT_New_Face(mFreetype,pFontName.c_str(),0,&loadedFace) != 0 )
 	{
@@ -297,11 +316,11 @@ uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 		THROW_MEANINGFUL_EXCEPTION("Failed to load true type font " + pFontName);
 	}
 
-	const uint32_t fontID = mNextFontID++;
-	mFreeTypeFonts[fontID] = std::make_unique<FreeTypeFont>(loadedFace,pPixelHeight);
+	const uint32_t fontID = mNextFreeTypeFontsId++;
 
-	// Now we need to prepare the texture cache.
+	mFreeTypeFonts[fontID] = std::make_unique<FreeTypeFont>(id,loadedFace,pPixelHeight);
 	auto& font = mFreeTypeFonts.at(fontID);
+
 	font->BuildTexture(
 		mMaximumAllowedGlyph,
 		[this](int pWidth,int pHeight)
@@ -319,21 +338,29 @@ uint32_t Graphics::FontLoad(const std::string& pFontName,int pPixelHeight)
 		}
 	);
 
-	VERBOSE_MESSAGE("Free type font loaded: " << pFontName << " with internal ID of " << fontID << " Using texture " << font->mTexture);
-
+	VERBOSE_MESSAGE("Free type font loaded: " << fontID << " with internal ID of " << id << " Using texture " << font->mTexture);
 	return fontID;
 }
 
-void Graphics::FontDelete(uint32_t pFont)
+
+void Graphics::FontDelete(const uint32_t pFont)
 {
-	mFreeTypeFonts.erase(pFont);
+	// Make sure it's in our list before we try to delete.
+	auto found = mFreeTypeFonts.find(pFont);
+	if( found != mFreeTypeFonts.end() )
+	{
+		mFreeTypeFonts.erase(pFont);
+	}
+	else
+	{
+		VERBOSE_MESSAGE("Tried to delete font that is not loaded." << pFont);
+	}
 }
 
-
-void Graphics::FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const std::string_view& pText)
+void Graphics::FontPrint(const uint32_t pID,float pX,float pY,Colour pColour,const std::string_view& pText)
 {
-	auto& font = mFreeTypeFonts.at(pFont);
-
+	auto& font = mFreeTypeFonts.at(pID);
+	
 	mWorkBuffers.vertices.Restart();
 	mWorkBuffers.uvs.Restart();
 
@@ -363,20 +390,20 @@ void Graphics::FontPrint(uint32_t pFont,float pX,float pY,Colour pColour,const s
 	CHECK_OGL_ERRORS();
 }
 
-void Graphics::FontPrintf(uint32_t pFont,float pX,float pY,Colour pColour,const char* pFmt,...)
+void Graphics::FontPrintf(const uint32_t pID,float pX,float pY,Colour pColour,const char* pFmt,...)
 {
 	char buf[1024];
 	va_list args;
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
-	FontPrint(pFont,pX,pY,pColour, buf);
+	FontPrint(pID,pX,pY,pColour, buf);
 }
 
-void Graphics::FontPrint(uint32_t pFont,const Rectangle& pRect,const Alignment pAlignment,Colour pColour,const std::string_view& pText)
+void Graphics::FontPrint(const uint32_t pID,const Rectangle& pRect,const Alignment pAlignment,Colour pColour,const std::string_view& pText)
 {
 	// First we need to get the rect of the text to be rendered.
-	const Rectangle fontRect = FontGetRect(pFont,pText);
+	const Rectangle fontRect = FontGetRect(pID,pText);
 
 	const Alignment AX = GET_X_ALIGNMENT(pAlignment);
 	const Alignment AY = GET_Y_ALIGNMENT(pAlignment);
@@ -401,12 +428,12 @@ void Graphics::FontPrint(uint32_t pFont,const Rectangle& pRect,const Alignment p
 		Y += pRect.GetHeight() - fontRect.GetHeight();
 	}
 
-	FontPrint(pFont,X,Y,pColour,pText);
+	FontPrint(pID,X,Y,pColour,pText);
 }
 
-Rectangle Graphics::FontGetRect(uint32_t pFont,const std::string_view& pText)const
+Rectangle Graphics::FontGetRect(const uint32_t pID,const std::string_view& pText)const
 {
-	auto& font = mFreeTypeFonts.at(pFont);
+	auto& font = mFreeTypeFonts.at(pID);
 	return font->GetRect(pText);
 }
 
@@ -710,24 +737,55 @@ void Graphics::DrawRoundedLine(float pFromX,float pFromY,float pToX,float pToY,C
 //
 }
 
-uint32_t Graphics::TextureLoadPNG(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
+uint32_t Graphics::TextureLoad(const std::string& pFilename,bool pFiltered,bool pGenerateMipmaps)
 {
-    if( mPNG->loader.LoadFromFile(pFilename) )
+    std::ifstream InputFile(pFilename,std::ifstream::binary);
+    if( !InputFile )
     {
-		if( mPNG->loader.GetHasAlpha() )
+		VERBOSE_MESSAGE("Failed to load PNG " << pFilename);
+		return TextureGetDiagnostics();
+	}
+
+	InputFile.seekg (0, InputFile.end);
+	const size_t fileSize = InputFile.tellg();
+	InputFile.seekg (0, InputFile.beg);
+
+	mImageLoader->fileBuffer.resize(fileSize);
+	std::vector<uint8_t> buffer(fileSize);
+
+	InputFile.read((char*)mImageLoader->fileBuffer.data(),fileSize);
+	if( !InputFile )
+	{
+		VERBOSE_MESSAGE("Failed to load PNG, could read all the data for file ");
+		return TextureGetDiagnostics();
+	}
+
+
+    if( mImageLoader->png.LoadFromMemory(mImageLoader->fileBuffer) )
+    {
+		if( mImageLoader->png.GetHasAlpha() )
         {
-            mPNG->loader.GetRGBA(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
+            mImageLoader->png.GetRGBA(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->png.GetWidth(),mImageLoader->png.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
         }
         else
         {
-            mPNG->loader.GetRGB(mPNG->pixelBuffer);
-            return TextureCreate(mPNG->loader.GetWidth(),mPNG->loader.GetHeight(),mPNG->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
+            mImageLoader->png.GetRGB(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->png.GetWidth(),mImageLoader->png.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
         }
     }
-	else
-	{
-		std::clog << "Failed to load PNG: " << pFilename << "\n";
+	else if( mImageLoader->tga.LoadFromMemory(mImageLoader->fileBuffer) )
+	{ 
+		if( mImageLoader->tga.GetHasAlpha() )
+        {
+            mImageLoader->tga.GetRGBA(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->tga.GetWidth(),mImageLoader->tga.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGBA,pFiltered,pGenerateMipmaps);
+        }
+        else
+        {
+            mImageLoader->tga.GetRGB(mImageLoader->pixelBuffer);
+            return TextureCreate(mImageLoader->tga.GetWidth(),mImageLoader->tga.GetHeight(),mImageLoader->pixelBuffer.data(),TextureFormat::FORMAT_RGB,pFiltered,pGenerateMipmaps);
+        }
 	}
 
 	return TextureGetDiagnostics();
