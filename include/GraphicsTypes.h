@@ -48,6 +48,7 @@ static const Colour COLOUR_BLACK = MakeColour(0,0,0);
 static const Colour COLOUR_WHITE = MakeColour(255,255,255);
 static const Colour COLOUR_GREY = MakeColour(150,150,150);
 static const Colour COLOUR_RED = MakeColour(255,0,0);
+static const Colour COLOUR_DARK_RED = MakeColour(127,0,0);
 static const Colour COLOUR_GREEN = MakeColour(0,255,0);
 static const Colour COLOUR_DARK_GREEN = MakeColour(0,127,0);
 static const Colour COLOUR_BLUE = MakeColour(0,0,255);

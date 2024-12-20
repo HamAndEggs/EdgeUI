@@ -13,7 +13,7 @@
 #endif
 
 #ifdef VERBOSE_SHADER_BUILD
-	#define VERBOSE_SHADER_MESSAGE(THE_MESSAGE__)	{std::clog << "Shader: " << THE_MESSAGE__ << "\n";}
+	#define VERBOSE_SHADER_MESSAGE(THE_MESSAGE__)	{std::clog << "Shader: " << THE_MESSAGE__ << "\n" << std::flush;}
 #else
 	#define VERBOSE_SHADER_MESSAGE(THE_MESSAGE__)
 #endif
