@@ -442,7 +442,6 @@ void Graphics::DrawRectangle(const Rectangle& pRect,Colour pColour,Colour pBorde
 
 	if( pTexture )
 	{
-		// Later this will respect the rounded corners and board of the style.
 		if( pRadius <= 0.0f )
 		{
 			DrawTexture(pRect,pTexture,pColour);
