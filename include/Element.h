@@ -9,6 +9,7 @@
 #include "Style.h"
 #include "Diagnostics.h"
 #include "Rectangle.h"
+#include "DataBinding.h"
 
 #include "../TinyJson/TinyJson.h"
 
@@ -172,6 +173,8 @@ private:
     std::list<ElementPtr> mChildren;
     std::string mID;                        //!< If set can be used to search for an element.
     std::string mText;                      //!< If set, it is displayed, based on settings in the style.
+
+    DataBinding mDataBinding;               //!< Adds the usual expected data binding functionality expected on a UI system.
 
     bool mVisible = true;                   //!< Turns on and off the drawing, update will still be called if mActive is true. If false, will not be drawn and children will not be.
     bool mActive = true;                    //!< If true, will update, if false will not be updated and it's children will not be. May still be drawn.

@@ -185,6 +185,11 @@ Element::Element(const tinyjson::JsonValue &root,ResouceMap* pLoadResources)
 
 Element::Element(const Style& pStyle)
 {
+    mDataBinding.Set("A_TEST","FRED");
+
+    const std::string res = mDataBinding.Substitute("My name is {{A_TEST}}, did you know???");
+    std::cout << "Binding test:" << res << "\n";
+
     SET_DEFAULT_ID();
     COUNT_ALLOCATION();
     SetStyle(pStyle);
